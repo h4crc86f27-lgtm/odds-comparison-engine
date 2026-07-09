@@ -1,3 +1,17 @@
+"""
+bet3000.py - Bet3000 data retrieval, event matching, and database insert module.
+
+Responsible for:
+- Fetching 1X2, O/U 2.5, O/U 3.5, Draw No Bet, Double Chance, and Half
+  Time odds from the bet500.bet API (the current backend for Bet3000).
+- Syncing Bet3000 competition metadata to the raw_comps table.
+- Matching Bet3000 events against Betfair reference events by timestamp
+  and team name, using exact matching first then fuzzy fallback.
+- Writing matched comparison records to the bet3000_matches table.
+
+Note: local variables inside insert_to_database_bet3000 use a 'toto_'
+ prefix for historical reasons; they hold Bet3000 values.
+"""
 import pymysql
 import configparser
 import requests
@@ -36,6 +50,11 @@ except:
 
 
 def do_bet3000_raw():
+    """Sync active Bet3000 football competitions into the raw_comps table.
+
+    Fetches the full country and tournament list from the bet500.bet API
+    and inserts any competition not already present in raw_comps.
+    """
 
     conn = pymysql.connect(host='127.0.0.1',user='local',passwd='oeijifjwejfio',db=db_name)
     cur  = conn.cursor()
@@ -73,6 +92,16 @@ def do_bet3000_raw():
 
 
 def bet3000_data_thread(eventid,start_time,event_name):
+    """
+    Thread worker: fetch 1X2 and supplementary market odds for one event.
+
+    Calls the MatchOddsbyGroup endpoint for the given event ID and extracts
+    the 3-way result (GroupName '01|3 Way'), Draw No Bet ('10|Draw no Bet'),
+    and O/U 2.5 ('02|Totals 2.5') markets. O/U 3.5, DC, and HT slots are
+    included in the return dict as zeros (not provided by this endpoint).
+
+    Returns a dict with keys 'id', 'book', 'markets', and 'start_time'.
+    """
     #b_headers={'Accept': '*/*', 'Accept-Encoding': 'gzip, deflate, br', 'Accept-Language': 'en-US,en;q=0.5', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive', 'Content-Length': '64', 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'Cookie': cookie, 'Host': 'www.bet3000.nl', 'Origin': 'https://www.bet3000.nl', 'Pragma': 'no-cache', 'Referer': 'https://www.bet3000.nl/nl/Sport', 'Sec-Fetch-Dest': 'empty', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-origin', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0', 'X-Requested-With': 'XMLHttpRequest'}
     url="https://bet500.bet/API/MatchOddsbyGroup/" + str(eventid) + "/2/2"
 
@@ -130,6 +159,14 @@ def bet3000_data_thread(eventid,start_time,event_name):
 
 
 def pull_data_bet3000(compid,league):#add comp_data as mutable param
+    """
+    Fetch all event odds for a Bet3000 competition and record odds history.
+
+    Downloads the FixtureMobile fixture list for compid, dispatches one
+    thread per event via bet3000_data_thread(), collects results, writes
+    each event's snapshot to odds_history, and returns the full list of
+    event dicts.
+    """
 
     #print("..sleeping starting")
     #time.sleep(0.2)
@@ -183,6 +220,13 @@ def pull_data_bet3000(compid,league):#add comp_data as mutable param
 
 
 def insert_to_database_bet3000(t,b,league):
+    """
+    Write or update a matched Bet3000/Betfair event pair in bet3000_matches.
+
+    Unpacks Bet3000 and Betfair odds from t and b, applies home/away flip
+    correction if Betfair has the teams in the opposite order, assembles the
+    full odds JSON, then either updates an existing row or inserts a new one.
+    """
     
     conn = pymysql.connect(host='localhost',user='local',passwd='oeijifjwejfio',db=db_name)
     cur  = conn.cursor()
@@ -369,6 +413,16 @@ def insert_to_database_bet3000(t,b,league):
     conn.close()
     
 def align_matches(book_data,ref_data,league):
+    """
+    Match Bet3000 events to Betfair reference events and insert each pair.
+
+    Pass 1 - exact name match: for each Bet3000 event, finds a Betfair event
+    with an identical kick-off time and at least one identical team name
+    (case-insensitive). Matched pairs are inserted immediately.
+
+    Pass 2 - fuzzy fallback: events unmatched in pass 1 are retried using
+    fuzz.ratio() with a threshold of 80, plus substring containment checks.
+    """
     #here i run through,, so loop over book data,,
     books_left=[]
     matched=0
@@ -495,6 +549,16 @@ def align_matches(book_data,ref_data,league):
                 unmatched.append(bd)
 
 def do_insert_bet3000(toto_data,betfair_data,league,toto_teams):
+    """
+    Entry point: convert Betfair reference data and run event alignment.
+
+    Calls convert_ref_matches() to normalise betfair_data into a list, then
+    passes both datasets to align_matches() for matching and DB insertion.
+    Silently skips if either dataset is empty.
+
+    Parameters are named with a 'toto_' prefix for historical reasons;
+    toto_data and toto_teams hold Bet3000 values.
+    """
     #global toto_teams
     #print("doing fuzzy and insert bet3000")
 
