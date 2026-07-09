@@ -1,4 +1,17 @@
 #betfair API market puller
+"""
+arb_monitor.py - Main orchestration loop for the odds comparison engine.
+
+Pulls competition data from Betfair Exchange and all active bookmaker
+providers, matches events per competition, runs each provider's insert
+routine to write comparison records to the database, and updates the
+last-scan timestamp. Designed to run as a persistent background process.
+
+Usage:
+    python arb_monitor.py [book1 book2 ...]
+
+    If no book arguments are supplied, a default list is used.
+"""
 from asyncio import subprocess
 import time
 from operator import le
@@ -85,6 +98,7 @@ else:
     
 print(book_list)
 def mud(rows):
+    """Return a shuffled subset of rows for randomised processing order."""
     if 0:
         md  = int(len(rows)/3)
         print(len(rows))
@@ -108,6 +122,13 @@ def mud(rows):
 m8bets_alldata={}
 
 def process_comp(comp_meta):#toto_id,bf_id,league):
+    """
+    Pull and insert odds data for a single competition.
+
+    Fetches Betfair data first; if successful, concurrently fetches data
+    from all active bookmakers in book_list, then calls each provider's
+    insert function to write comparison records to the database.
+    """
     global comp_dict
     global k_value,b_session,ust
     global bf_comps_active
@@ -445,15 +466,15 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
     ##unibet check
     pass#print("finished processing :",comp_meta['league'],"<<<<<<<<<<>>>>>>>>>>>")
 
-"""comps=[{"toto":"591","betfair":"129","league":"sweall"},
-{"toto":"826","betfair":"12117172","league":"aleague"},
-{"toto":"567","betfair":"10932509","league":"epl"},
-{"toto":"1001","betfair":"12206014","league":"bahpre"},
-{"toto":"4319","betfair":"12231751","league":"canpre"}]
-"""
 
 def dump():
-    
+    """
+    Write auxiliary market snapshots to pickle files for the frontend.
+
+    Dumps asian-handicap match odds, horse racing win/place markets, and
+    tennis match/set odds to /var/www/html/ as pickle files consumed by
+    the PHP frontend.
+    """
     out={}
     price_filter=betfairlightweight.filters.price_projection(price_data=['EX_BEST_OFFERS'])
     events = trading.betting.list_events(filter={"competitionIds":[str(11196870)]})
@@ -720,6 +741,13 @@ def dump():
         
 #comps=[{"toto":"567","betfair":"10932509","league":"epl"}]
 def get_comp_list():
+    """
+    Load active competitions from the database and build comp metadata dicts.
+
+    Queries the comps table for all non-ignored competitions whose Betfair
+    competition ID is currently active, and returns a list of per-competition
+    metadata dicts keyed by provider name, for use by process_comp().
+    """
     global active_betfair_comps
     print("bfactives:",len(active_betfair_comps))
     comps=[]
@@ -831,6 +859,12 @@ def get_comp_list():
 
 
 def go(comps):
+    """
+    Run process_comp() for each competition using a thread pool.
+
+    If m8bets is in the active book list, pre-fetches all m8bets data once
+    before distributing per-competition work across threads.
+    """
     global thread_count,m8bets_alldata
     #so you only need to do m8bets once,, for all comps,, then it just gets split up..
     #so maybe call it here,, and then global it or send it in as a param..
@@ -852,17 +886,6 @@ def go(comps):
     with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
         executor.map(process_comp, comps )
 
-
-"""
-isnt_running=True
-output = sp.check_output(["pgrep","--list-full","python"])
-lines = output.decode("utf8").split("\n")
-for line in lines:
-    pass#print(line)
-    if line.find("arb_monitor.py")>-1:
-        isnt_running=False
-        pass#print("monitor is running")
-        break"""
 
 last_cycle_time=time.time()
 
@@ -1114,17 +1137,6 @@ while 1:#isnt_running:
         print("bf_comps_active:",bf_comps_active)
         print("betfair_pull:",betfair_pull_time)
         print("betfair_pull_err_time >> :",betfair_pull_err_time)
-        """print("unibet_pull:",unibet_pull_time)
-        print("contra_pull:",contra_pull_time)
-        print("qrbet_pull:",qrbet_pull_time)
-        print("toto_pull:",toto_pull_time)
-        print("winkel_toto_pull:",winkel_toto_splice_time)
-        print("betfair_insert:",betfair_splice_time)
-        print("unibet_insert:",unibet_splice_time)
-        print("contra_insert:",contra_splice_time)
-        print("qrbet_insert:",qrbet_splice_time)
-        print("toto_insert:",toto_splice_time)
-        print("winkel_toto_insert:",winkel_toto_splice_time)"""
         #trading.logout()
         print("logged out!")
     except Exception as msg:
