@@ -1,3 +1,13 @@
+"""
+utils.py - Shared utility functions for the arber_modules package.
+
+Provides:
+- Odds-history deduplication and database insertion.
+- Timestamp conversion helpers for provider-specific time formats.
+- String normalisation (accent stripping).
+- Betfair reference-data transformation.
+- Database error logging.
+"""
 import datetime
 import pymysql
 import configparser
@@ -15,8 +25,17 @@ db_name="arb_db_beta"#db_name = config['DEFAULT']['db_name']
 last_match_keys = {}
 
 
-def do_odds_history_insert(book,event_id,odds_data,market_data,vwap_data = None):
+def do_odds_history_insert(book, event_id, odds_data, market_data, vwap_data=None):
+    """
+    Insert an odds snapshot into odds_history, skipping duplicates.
 
+    Builds a fingerprint string from the current prices. If the fingerprint
+    matches the last recorded snapshot for (book, event_id), the insert is
+    skipped. Otherwise the snapshot is written and the cache updated.
+
+    Betfair data (book=="betfair") is keyed by outcome suffix (_1, _X, _2);
+    all other books produce a flat list of price values.
+    """
     od = odds_data.copy()
     md = market_data.copy()
 
@@ -27,9 +46,8 @@ def do_odds_history_insert(book,event_id,odds_data,market_data,vwap_data = None)
         #print(od)
         #print("END DUMP<<<<<<<<<<<<<<<")
         od_contents={}
-        # currently is overwriting the book odds,, coz same names,,
-        # either need to change the names, add more subcats,, or split them up like with
-        # the books.
+        # Keys from odds[0/1/2] are suffixed with _1/_X/_2 to avoid
+        # collisions when all three outcomes share the same field names.
 
         for o in od[0]:
             od_contents[o + "_1"]=od[0][o]
@@ -82,7 +100,8 @@ def do_odds_history_insert(book,event_id,odds_data,market_data,vwap_data = None)
     except Exception as msg:
         print("ODDS_HISTORY_INSERT_ERROR:", book, event_id, str(msg))
 
-def convert_euro_time(inny):
+def convert_euro_time(inny: str) -> str:
+        """Convert a UTC+2 ISO-8601 datetime string to UTC, returning ISO-8601 without timezone."""
         #print(inny)
         x,y = inny.split("T")
         yr,mt,dt = x.split("-")
@@ -90,7 +109,8 @@ def convert_euro_time(inny):
 
         return str(datetime.datetime(int(yr),int(mt),int(dt),int(hr),int(mn),int(sc)) - datetime.timedelta(hours=2))[0:19].replace(" ","T")
 
-def convert_yess_time(inny):
+def convert_yess_time(inny: str) -> str:
+        """Convert a UTC+3 space-separated datetime string to UTC, returning ISO-8601 without timezone."""
         #print(inny)
         x,y = inny.split(" ")
         yr,mt,dt = x.split("-")
@@ -99,7 +119,12 @@ def convert_yess_time(inny):
         return str(datetime.datetime(int(yr),int(mt),int(dt),int(hr),int(mn),int(sc)) - datetime.timedelta(hours=3))[0:19].replace(" ","T")
 
 
-def convert_midnight(inny):
+def convert_midnight(inny: str) -> str:
+        """Advance a date by one day when the time component is exactly midnight (00:00:00Z).
+
+        Returns the date portion only (YYYY-MM-DD) when adjusted, or the
+        original date string unchanged for all other times.
+        """
         #print(inny)
         x,y = inny.split("T")
         yr,mt,dt = x.split("-")
@@ -109,18 +134,25 @@ def convert_midnight(inny):
                 retval = str(datetime.datetime(int(yr),int(mt),int(dt)) + datetime.timedelta(days=1))[0:10]
         return retval
 
-def strip_accents(s):
-   return ''.join(c for c in unicodedata.normalize('NFD', s)
-                  if unicodedata.category(c) != 'Mn')
+def strip_accents(s: str) -> str:
+    """Remove diacritical marks from a Unicode string."""
+    return ''.join(c for c in unicodedata.normalize('NFD', s)
+                   if unicodedata.category(c) != 'Mn')
 
-def insert_error(err_str,misc=""):
+def insert_error(err_str: str, misc: str = "") -> None:
+    """Write an error message to the errors table."""
     conn = pymysql.connect(host='localhost',user='local',passwd='oeijifjwejfio',db=db_name)
     cur  = conn.cursor()
     cur.execute("insert into errors (timestamp,err_msg,misc) values(%s,%s,%s)",(time.time(),err_str,misc))
     conn.commit()
     conn.close()
 
-def convert_string_timestamp(inny):
+def convert_string_timestamp(inny) -> int:
+    """Return a Unix epoch integer from either a numeric value or an ISO-8601 string.
+
+    Accepts an integer, a string of digits, or a string in the form
+    'YYYY-MM-DDTHH:MM:SSZ' (or with a space separator instead of 'T').
+    """
         #print(inny)
     #print("about to check timestamp:",inny)
     try:
@@ -133,7 +165,18 @@ def convert_string_timestamp(inny):
     #print("done>>",int(datetime.datetime(int(yr),int(mt),int(dt),int(hr),int(mn),int(sc)).timestamp()))
     return int(datetime.datetime(int(yr),int(mt),int(dt),int(hr),int(mn),int(sc)).timestamp())
 
-def convert_ref_matches(bf_data):
+def convert_ref_matches(bf_data: dict) -> list:
+    """
+    Transform a Betfair data dict into a normalised list of match records.
+
+    For each event in bf_data that has odds, builds back/lay lists for the
+    match result, over/under 2.5, over/under 3.5, DNB, double chance, and
+    half-time markets, plus a VWAP snapshot. Falls back to zeros for any
+    market that is missing from the data.
+
+    Returns a list of match dicts keyed by market type, suitable for the
+    provider insert functions.
+    """
     bf_matches=[]
     #print(bf_data)
     for b in bf_data:
@@ -277,7 +320,8 @@ def convert_ref_matches(bf_data):
 
     return bf_matches
 
-def remove_draw(inny):
+def remove_draw(inny: list) -> list:
+    """Remove all draw-related entries ('draw', 'Draw', 'X', 'x', '') from a team list in-place."""
     try:
         inny.remove("draw")
     except:
