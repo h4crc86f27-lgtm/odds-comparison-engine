@@ -1,0 +1,8 @@
+gamma/arber_modules/unibet.py:203:def pull_data_unibet(compid,league):
+gamma/arber_modules/unibet.py:278:def insert_to_database_unibet(t,b,league):
+gamma/arber_modules/unibet.py:481:def align_matches(book_data,ref_data,league):
+gamma/arber_modules/unibet.py:615:def do_insert_unibet(unibet_data,betfair_data,league,unibet_teams):
+gamma/arber_modules/bet3000.py:161:def pull_data_bet3000(compid,league):#add comp_data as mutable param
+gamma/arber_modules/bet3000.py:222:def insert_to_database_bet3000(t,b,league):
+gamma/arber_modules/bet3000.py:415:def align_matches(book_data,ref_data,league):
+gamma/arber_modules/bet3000.py:551:def do_insert_bet3000(toto_data,betfair_data,league,toto_teams):
