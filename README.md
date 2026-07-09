@@ -105,7 +105,7 @@ Contains the runtime engine.
 Important files include:
 
 - arb_monitor.py
-- history_processor.py
+- history_preprocessor.py
 - mysql_interface.py
 
 ---

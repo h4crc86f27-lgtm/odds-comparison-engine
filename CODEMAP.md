@@ -9,7 +9,7 @@ gamma/mysql_interface.py
 Legacy credentials/config-style file. Not an active database interface module.
 Database access is currently done directly with pymysql in arb_monitor.py and provider modules.
 
-gamma/history_processor.py
+gamma/history_preprocessor.py
 Historical processing.
 
 ## Provider Modules
