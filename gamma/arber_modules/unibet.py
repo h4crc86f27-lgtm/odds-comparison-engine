@@ -1,3 +1,14 @@
+"""
+unibet.py - Unibet data retrieval, event matching, and database insert module.
+
+Responsible for:
+- Fetching 1X2, O/U 2.5, O/U 3.5, DNB, Double Chance, and Half Time odds
+  from the Kambi offering API used by Unibet.
+- Syncing Unibet competition metadata to the raw_comps table.
+- Matching Unibet events against Betfair reference events by timestamp
+  and team name, using exact matching first then fuzzy fallback.
+- Writing matched comparison records to the unibet_matches table.
+"""
 import pymysql
 import configparser
 import requests
@@ -27,6 +38,16 @@ except:
 
 
 def pull_extra_markets_unibet(eventid):#="1018556845"):
+    """
+    Fetch supplementary market odds for a single Unibet event.
+
+    Calls the Kambi betoffer endpoint for the given event ID and extracts
+    O/U 2.5, O/U 3.5, Draw No Bet, Double Chance, and Half Time prices.
+
+    Returns a dict with keys '2.5', '3.5', 'DNB', '1x2_HT', 'DC', each
+    containing a sub-dict of outcome labels mapped to decimal odds.
+    Outcomes not found in the response remain at 0.
+    """
     retval={"2.5":{"Over":0,"Under":0},
             "3.5":{"Over":0,"Under":0},
             "DNB":{"Home":0,"Away":0},
@@ -90,6 +111,7 @@ def pull_extra_markets_unibet(eventid):#="1018556845"):
     return retval
 
 def do_unibet_raw():
+    """Sync active Unibet football competitions into the raw_comps table."""
     ##unibet raw comp gatherer
     conn = pymysql.connect(host='localhost',user='local',passwd='oeijifjwejfio',db=db_name)
     cur  = conn.cursor()
@@ -123,6 +145,14 @@ def do_unibet_raw():
     conn.close()
 
 def unibet_data_thread(e,events):
+        """
+        Thread worker: extract 1X2 odds and supplementary markets for one event.
+
+        Finds the match-odds offer (betOfferType id 2) within the event's offers,
+        then calls pull_extra_markets_unibet() up to 3 times to retrieve the
+        remaining markets. Returns a dict with keys 'id', 'book', 'markets',
+        and 'start_time'.
+        """
         outcomes=[]
         extra_markets=[]
         eid = events[e]['event']['id']
@@ -171,6 +201,13 @@ def unibet_data_thread(e,events):
 
 
 def pull_data_unibet(compid,league):
+    """
+    Fetch all event odds for a Unibet competition and record odds history.
+
+    Downloads the listView feed for compid, dispatches per-event threads via
+    unibet_data_thread(), collects results, writes each event's snapshot to
+    odds_history, and returns the full list of event dicts.
+    """
 
     print("UNIBET DATA >>>")
     comp_data=[]
@@ -224,6 +261,7 @@ def pull_data_unibet(compid,league):
     return comp_data
 
 def get_team_list_unibet():
+    """Load Unibet-to-Betfair team name mappings from the unibet_teams table."""
     #print("<building team list>")
     conn = pymysql.connect(host='localhost',user='local',passwd='oeijifjwejfio',db=db_name)
     cur  = conn.cursor()
@@ -238,6 +276,13 @@ def get_team_list_unibet():
     return teams
 
 def insert_to_database_unibet(t,b,league):
+    """
+    Write or update a matched Unibet/Betfair event pair in unibet_matches.
+
+    Unpacks Unibet and Betfair odds from t and b, applies home/away flip
+    correction if Betfair has the teams in the opposite order, assembles the
+    full odds JSON, then either updates an existing row or inserts a new one.
+    """
     conn = pymysql.connect(host='localhost',user='local',passwd='oeijifjwejfio',db=db_name)
     cur  = conn.cursor()
     unibet_teamnames = t['matchup_raw']
@@ -434,6 +479,16 @@ def insert_to_database_unibet(t,b,league):
 
 
 def align_matches(book_data,ref_data,league):
+    """
+    Match Unibet events to Betfair reference events and insert each pair.
+
+    Pass 1 — exact name match: for each Unibet event, finds a Betfair event
+    with an identical kick-off time and at least one identical team name
+    (case-insensitive). Matched pairs are inserted immediately.
+
+    Pass 2 — fuzzy fallback: events unmatched in pass 1 are retried using
+    fuzz.ratio() with a threshold of 80, plus substring containment checks.
+    """
     #here i run through,, so loop over book data,,
     books_left=[]
     matched=0
@@ -558,6 +613,13 @@ def align_matches(book_data,ref_data,league):
                     
 
 def do_insert_unibet(unibet_data,betfair_data,league,unibet_teams):
+    """
+    Entry point: convert Betfair reference data and run event alignment.
+
+    Calls convert_ref_matches() to normalise betfair_data into a list, then
+    passes both datasets to align_matches() for matching and DB insertion.
+    Silently skips if either dataset is empty.
+    """
     #global unibet_teams
     #print("doing fuzzy and insert UNIBET")
 
