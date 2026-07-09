@@ -1,0 +1,202 @@
+[]
+[]
+[]
+['bet3000debug']
+about to login..
+logging in!
+team time..
+raw took: 4.00543212890625e-05
+bfactives: 219
+complen: 59
+all_events: 413
+{9404054: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 228: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 5627174: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 35: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 12204204: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 15: [<EventResult>, <EventResult>, <EventResult>, <EventResult>], 11068551: [<EventResult>, <EventResult>, <EventResult>], 7129730: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 12375833: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 12202373: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 12204313: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 97: [<EventResult>, <EventResult>, <EventResult>, <EventResult>], 2005: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 129: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 194215: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 11086347: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 23: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 99: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 141: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 45: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 12199689: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 801976: [<EventResult>, <EventResult>, <EventResult>], 57: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 4905: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 11: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 67387: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 117: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 879221: [<EventResult>, <EventResult>], 39218: [<EventResult>, <EventResult>, <EventResult>, <EventResult>], 10932509: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 81: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 17: [<EventResult>], 12203971: [<EventResult>, <EventResult>], 13: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 105: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 61: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 12395639: [<EventResult>], 10479956: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 11591693: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 9882094: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 25: [<EventResult>], 133: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 107: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 89: [<EventResult>], 12216637: [<EventResult>, <EventResult>, <EventResult>], 12216976: [<EventResult>], 321319: [<EventResult>, <EventResult>, <EventResult>], 10854877: [<EventResult>], 55: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 403085: [<EventResult>], 59: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>], 12290625: [<EventResult>], 89979: [<EventResult>, <EventResult>, <EventResult>, <EventResult>], 10699940: [<EventResult>, <EventResult>], 12395641: [<EventResult>], 12013300: [<EventResult>], 37: [<EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>, <EventResult>]}
+lookup took: 0.08048248291015625 seconds
+5.099867105484009
+betfair data dict took: 5.210188865661621 413
+got comps..took  5.2102038860321045
+pulling betfair
+processing >>  Swedish Allsvenskan
+pulling betfair
+processing >>  Swiss Super League
+6  bf match data: Swiss Super League
+pulling betfair
+processing >>  CONMEBOL Copa Sudamericana
+NOTFOUND: 12204604  in compdict
+process err (bf): 12204604
+pulling betfair
+processing >>  Australian A-League Men
+NOTFOUND: 12117172  in compdict
+process err (bf): 12117172
+pulling betfair
+processing >>  Brazilian Serie A
+8  bf match data: Swedish Allsvenskan
+pulling betfair
+processing >>  US Major League Soccer
+10  bf match data: Brazilian Serie A
+pulling betfair
+processing >>  Danish Superliga
+6  bf match data: Danish Superliga
+pulling betfair
+processing >>  Dutch Eredivisie
+16  bf match data: US Major League Soccer
+pulling betfair
+processing >>  English National League
+9  bf match data: Dutch Eredivisie
+pulling betfair
+processing >>  English League 1
+14  bf match data: English League 1
+pulling betfair
+processing >>  Brazilian Serie B
+3  bf match data: Brazilian Serie B
+pulling betfair
+processing >>  Spanish Segunda Division
+23  bf match data: English National League
+pulling betfair
+processing >>  English League 2
+8  bf match data: Spanish Segunda Division
+pulling betfair
+processing >>  UEFA Europa Conference League
+12  bf match data: English League 2
+pulling betfair
+processing >>  Turkish Super League
+9  bf match data: Turkish Super League
+pulling betfair
+processing >>  Romanian Liga I
+19  bf match data: UEFA Europa Conference League
+pulling betfair
+processing >>  Latvian Virsliga
+1  bf match data: Latvian Virsliga
+pulling betfair
+processing >>  Finnish Veikkausliiga
+7  bf match data: Romanian Liga I
+pulling betfair
+processing >>  AFC Champions League
+6  bf match data: Finnish Veikkausliiga
+pulling betfair
+processing >>  Egyptian Premier
+4  bf match data: AFC Champions League
+pulling betfair
+processing >>  French Ligue 1
+3  bf match data: Egyptian Premier
+pulling betfair
+processing >>  German Bundesliga
+9  bf match data: French Ligue 1
+pulling betfair
+processing >>  English Premier League
+9  bf match data: German Bundesliga
+pulling betfair
+processing >>  Swedish Superettan
+9  bf match data: Swedish Superettan
+pulling betfair
+processing >>  Slovakian Super League
+10  bf match data: English Premier League
+pulling betfair
+processing >>  Austrian Bundesliga
+1  bf match data: Slovakian Super League
+pulling betfair
+processing >>  Italian Serie A
+5  bf match data: Austrian Bundesliga
+pulling betfair
+processing >>  UEFA Europa League
+10  bf match data: Italian Serie A
+pulling betfair
+processing >>  Japanese J League
+1  bf match data: Japanese J League
+pulling betfair
+processing >>  Portuguese Primeira Liga
+8  bf match data: Portuguese Primeira Liga
+pulling betfair
+processing >>  UEFA Champions League
+18  bf match data: UEFA Europa League
+pulling betfair
+processing >>  Scottish Championship
+6  bf match data: Scottish Championship
+pulling betfair
+processing >>  English Championship
+18  bf match data: UEFA Champions League
+pulling betfair
+processing >>  Mexican Liga MX
+7  bf match data: Mexican Liga MX
+pulling betfair
+processing >>  Lithuanian A Lyga
+24  bf match data: English Championship
+pulling betfair
+processing >>  Belgian First Division A
+2  bf match data: Lithuanian A Lyga
+pulling betfair
+processing >>  Croatian 1 HNL
+1  bf match data: Croatian 1 HNL
+pulling betfair
+processing >>  Czech 1 Liga
+4  bf match data: Belgian First Division A
+pulling betfair
+processing >>  Danish 1st Division
+1  bf match data: Danish 1st Division
+pulling betfair
+processing >>  German Bundesliga 2
+8  bf match data: Czech 1 Liga
+pulling betfair
+processing >>  Norwegian Eliteserien
+3  bf match data: Norwegian Eliteserien
+pulling betfair
+processing >>  Polish I Liga
+1  bf match data: Polish I Liga
+pulling betfair
+processing >>  Polish Ekstraklasa
+9  bf match data: German Bundesliga 2
+pulling betfair
+processing >>  South African Premier Division
+2  bf match data: South African Premier Division
+pulling betfair
+processing >>  Spanish La Liga
+4  bf match data: Polish Ekstraklasa
+pulling betfair
+processing >>  French Ligue 2
+9  bf match data: French Ligue 2
+pulling betfair
+processing >>  Bulgarian A League
+11  bf match data: Spanish La Liga
+pulling betfair
+processing >>  German 3 Liga
+4  bf match data: Bulgarian A League
+pulling betfair
+processing >>  Italian Serie B
+10  bf match data: German 3 Liga
+pulling betfair
+processing >>  Polish Cup
+1  bf match data: Polish Cup
+pulling betfair
+processing >>  Dutch Eerste Divisie
+10  bf match data: Italian Serie B
+pulling betfair
+processing >>  US United Football League
+3  bf match data: US United Football League
+pulling betfair
+processing >>  South Korean K League 1
+1  bf match data: South Korean K League 1
+pulling betfair
+processing >>  South Korean K League 2
+1  bf match data: South Korean K League 2
+pulling betfair
+processing >>  South Korean K3 League
+1  bf match data: South Korean K3 League
+pulling betfair
+processing >>  Argentinian Primera Division
+5  bf match data: Dutch Eerste Divisie
+pulling betfair
+processing >>  Irish Premier Division
+2  bf match data: Irish Premier Division
+pulling betfair
+processing >>  Scottish Premiership
+6  bf match data: Scottish Premiership
+pulling betfair
+processing >>  English  EFL Trophy
+9  bf match data: Argentinian Primera Division
+6  bf match data: English  EFL Trophy
+scan took(5 seconds (2) threads)..NOSleep..0 (GAMMA):2025-09-30 15:51:49
+bf_comps_active: 57
+betfair_pull: 0.9109914302825928
+betfair_pull_err_time >> : 1.3828277587890625e-05
+logged out!
+elapsed: 5.954695463180542
+inserted..

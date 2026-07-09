@@ -1,0 +1,337 @@
+#betfair API market puller
+import time
+from operator import le
+import betfairlightweight
+from betfairlightweight import filters
+import pandas as pd
+import numpy as np
+import os
+import datetime
+import json
+import requests
+import pickle
+from fuzzywuzzy import fuzz
+import pymysql
+import concurrent.futures
+
+#toto section
+def pull_toto_data(compid,league):
+
+
+    #this pulls the market for comp raw.. need to swap in ddN, and dates
+    url="https://content.toto.nl/content-service/api/v1/q/time-band-event-list?maxMarkets=10&marketSortsIncluded=--%2CHH%2CHL%2CMR%2CWH&marketGroupTypesIncluded=MONEYLINE%2CROLLING_SPREAD%2CROLLING_TOTAL%2CSTATIC_SPREAD%2CSTATIC_TOTAL&allowedEventSorts=MTCH&includeChildMarkets=true&prioritisePrimaryMarkets=true&includeCommentary=true&includeMedia=true&drilldownTagIds=" + compid + "&maxTotalItems=60&maxEventsPerCompetition=7&maxCompetitionsPerSportPerBand=3&maxEventsForNextToGo=5&startTimeOffsetForNextToGo=600&dates=2022-04-25T22%3A00%3A00Z%2C2022-04-26T22%3A00%3A00Z%2C2022-04-27T22%3A00%3A00Z%2C2022-04-28T22%3A00%3A00Z%2C2022-04-29T22%3A00%3A00Z%2C2022-04-30T22%3A00%3A00Z%2C2022-05-01T22%3A00%3A00Z%2C2022-05-02T22%3A00%3A00Z%2C2022-05-03T22%3A00%3A00Z"   
+    #params="maxMarkets=10&marketSortsIncluded=--%2CHH%2CHL%2CMR%2CWH&marketGroupTypesIncluded=MONEYLINE%2CROLLING_SPREAD%2CROLLING_TOTAL%2CSTATIC_SPREAD%2CSTATIC_TOTAL&allowedEventSorts=MTCH&includeChildMarkets=true&prioritisePrimaryMarkets=true&includeCommentary=true&includeMedia=true&drilldownTagIds=826&maxTotalItems=60&maxEventsPerCompetition=7&maxCompetitionsPerSportPerBand=3&maxEventsForNextToGo=5&startTimeOffsetForNextToGo=600&dates=2022-04-24T22%3A00%3A00Z%2C2022-04-25T22%3A00%3A00Z%2C2022-04-26T22%3A00%3A00Z"
+    res = requests.get(url)
+    data = res.json()
+    events_base = data['data']['timeBandEvents']
+
+    comp_data=[]
+
+    for e in events_base:
+        
+        for f in e['events']:
+            #print(f['id'])
+            outcomes=[]
+            markets = f['markets']
+            home_outcome= markets[0]['outcomes'][0]['prices'][0]['decimal']
+            home = markets[0]['outcomes'][0]['name']
+            draw_outcome=markets[0]['outcomes'][1]['prices'][0]['decimal']
+            draw =markets[0]['outcomes'][1]['name']
+            away_outcome=markets[0]['outcomes'][2]['prices'][0]['decimal']
+            away = markets[0]['outcomes'][2]['name']
+            outcomes.append({"name":home,"price":home_outcome})
+            outcomes.append({"name":draw,"price":draw_outcome})
+            outcomes.append({"name":away,"price":away_outcome})
+            #print(home + " v " + away,home_outcome,draw_outcome,away_outcome,"<>",draw)
+            comp_data.append({"id":f['id'],"book":outcomes})
+
+
+
+    
+    return comp_data
+
+
+
+
+my_username ="hippienew@outlook.com"# cred['username']
+my_password = "Saphires_43"#cred['password']
+my_app_key ="o4DESE5fzU4r1fkv"# cred['app_key']
+
+trading = betfairlightweight.APIClient(username=my_username,
+                                       password=my_password,
+                                       app_key=my_app_key,
+                                       certs="/home/arb_bot/certs")
+
+trading.login()
+print("logged in!")
+
+# Get a datetime object in a week and convert to string
+datetime_in_a_week = (datetime.datetime.utcnow() + datetime.timedelta(weeks=1)).strftime("%Y-%m-%dT%TZ")
+
+
+def pull_markets(eventids):
+	market_catalogue_filter={"eventIds":eventids}
+
+	market_catalogues = trading.betting.list_market_catalogue(
+    		filter=market_catalogue_filter,
+    		max_results='100',
+    		sort='FIRST_TO_START'
+	)
+	return market_catalogues
+
+def pull_events(compid):
+	filter={"competitionIds":[str(compid)]}
+
+	events = trading.betting.list_events(
+    		filter=filter
+	)
+	return events
+
+def get_event_matchodds(markets,eventid):
+	for m in markets:
+		if m.market_name=='Match Odds':
+			return m.market_id
+	return 0
+
+def get_market_books(books):
+	price_filter=betfairlightweight.filters.price_projection(price_data=['EX_BEST_OFFERS'])
+	book =trading.betting.list_market_book(market_ids=books,price_projection=price_filter)
+	return book
+
+#betfair section
+def pull_betfair_data(compid,league):
+
+    events = pull_events(compid)
+    comp_data={}
+    eventids=[]
+    h2h_ids = []
+    for event in events:
+        event_id =event.event.id
+        comp_data[event_id]={"name":event.event.name,"odds":[],"timestamp":event.event.open_date.timestamp()}
+        eventids.append(event_id)
+        #comp_markets = pull_markets(eventids)
+        comp_market = pull_markets([event_id])
+        comp_data[event_id]['h2h_id']=get_event_matchodds(comp_market,event_id)
+        try:
+            books = get_market_books([comp_data[event_id]['h2h_id']])
+            for runner in books[0].runners:
+                comp_data[event_id]['odds'].append({"price":runner.ex.available_to_lay[0].price,"vol":runner.ex.available_to_lay[0].size})
+        except:
+            pass
+
+    return comp_data
+
+   
+
+##ok,, from here, its matched, and has its fuzzy flag.. now just insert to db
+## after consolidating ofc..
+def get_team_list():
+    #print("<building team list>")
+    conn = pymysql.connect(host='localhost',user='local',passwd='oeijifjwejfio',db='arb_db')
+    cur  = conn.cursor()
+    cur.execute("select back_name,betfair_name from teams")
+    rows = cur.fetchall()
+    teams={}
+    for row in rows:
+        teams[row[0]]=row[1]
+    conn.close()
+    #print("<team list built>")
+    return teams
+
+
+def insert_to_database(t,b):
+    conn = pymysql.connect(host='localhost',user='local',passwd='oeijifjwejfio',db='arb_db')
+    cur  = conn.cursor()
+    toto_teamnames = t['matchup_raw']
+    t1fuzzy,t2fuzzy=0,0
+    
+    #toto section
+    for runner in t['book']:
+        if runner[0]==t['matchup'][0]:
+            toto_1_odds=runner[1]
+            if runner[2]==1:
+                t1fuzzy=1
+        elif runner[0]==t['matchup'][1]:
+            toto_2_odds=runner[1]
+            if runner[2]==1:
+                t2fuzzy=1
+        else:
+            toto_x_odds=runner[1]
+    #betfair section
+    
+    bf_teamnames = b['matchup_raw']
+    for runner in b['book']:
+        if runner[0]==b['matchup'][0]:
+            bf_1_odds=runner[1]
+            bf_1_vol=runner[2]
+        elif runner[0]==b['matchup'][1]:
+            bf_2_odds=runner[1]
+            bf_2_vol = runner[2]
+        else:
+            bf_x_odds=runner[1]
+            bf_x_vol=runner[2]
+    ##here flip back names and odds if flipped..
+    if b['flipped']:
+        temp = toto_1_odds
+        toto_1_odds = toto_2_odds
+        toto_2_odds = temp
+        temp = toto_teamnames[0]
+        toto_teamnames[0] = toto_teamnames[1]
+        toto_teamnames[1] = temp
+        
+
+        temp = bf_1_odds
+        bf_1_odds = bf_2_odds
+        bf_2_odds = temp
+        temp = bf_teamnames[0]
+        bf_teamnames[0] = bf_teamnames[1]
+        bf_teamnames[1] = temp
+
+        temp = t1fuzzy
+        t1fuzzy = t2fuzzy
+        t2fuzzy = temp
+        
+    #insert section
+    odds_json={"toto_1_odds":toto_1_odds,"toto_x_odds":toto_x_odds,"toto_2_odds":toto_2_odds,
+               "bf_1_odds":{"price":bf_1_odds,"vol":bf_1_vol},"bf_x_odds":{"price":bf_x_odds,"vol":bf_x_vol},"bf_2_odds":{"price":bf_2_odds,"vol":bf_2_vol}}
+    #here check for existing..
+    cur.execute("select * from matches where toto_event_id=%s and betfair_event_id=%s",(t['event_id'],b['event_id']))
+    rows = cur.fetchall()
+    if len(rows)>0:
+        print("found event,, updating",t['event_id'],b['event_id'])
+        cur.execute("update matches set timestamp=%s,odds_data=%s,t1_fuzzy=%s,t2_fuzzy=%s where toto_event_id=%s and betfair_event_id=%s",
+                (b['timestamp'],json.dumps(odds_json),t1fuzzy,t2fuzzy,t['event_id'],b['event_id']))
+        print("inserted:",t['event_id'],b['event_id'])
+    else:
+        print("NO event,, inserting",t['event_id'],b['event_id'])
+        cur.execute("insert into matches (timestamp,toto_event_id,betfair_event_id,team_1_toto,team_2_toto,team_1_betfair,team_2_betfair,odds_data,t1_fuzzy,t2_fuzzy) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (b['timestamp'],t['event_id'],b['event_id'],toto_teamnames[0],toto_teamnames[1],bf_teamnames[0],bf_teamnames[1],json.dumps(odds_json),t1fuzzy,t2fuzzy))
+    conn.commit()
+    conn.close()
+    
+def do_insert(toto_data,betfair_data,league):
+    print("doing fuzzy and insert")
+
+    
+    #pull all bf matches, and subsequent team names.. for fuzzy match
+    
+    bf_data = betfair_data
+    #convert into list of lists
+
+    bf_matches=[]
+    for b in bf_data:
+        if len(bf_data[b]['odds'])>0:
+            matchlist=[]
+            teama,teamb  = bf_data[b]['name'].split(" v ")
+            matchteams=[teama,teamb]
+            matchteams.sort()
+            if matchteams!=[teama,teamb]:
+                flipped=1
+            else:
+                flipped=0
+                
+            matchlist.append([teama,bf_data[b]['odds'][0]['price'],bf_data[b]['odds'][0]['vol']])
+            matchlist.append([teamb,bf_data[b]['odds'][1]['price'],bf_data[b]['odds'][1]['vol']])
+            matchlist.append(["X",bf_data[b]['odds'][2]['price'],bf_data[b]['odds'][2]['vol']])
+            bf_matches.append({"matchup":matchteams,"flipped":flipped,"matchup_raw":matchteams,"book":matchlist,'event_id':b,"timestamp":bf_data[b]['timestamp']})
+
+    for b in bf_matches:
+        print(b)
+
+    print("------------------------>")
+    
+    tt_data = toto_data#pickle.load(f)
+
+    #here pull from db, and whittle down to unique,, then create the list..
+    teams = get_team_list()
+    print("there are:",len(teams),"teams")   
+
+    bf_teams=[]
+    for b in bf_data:
+        for name in bf_data[b]['name'].split(" v "):
+            bf_teams.append(name)
+    bf_teams=list(set(bf_teams))
+
+    tt_matches=[]
+
+    for t in  tt_data:
+        match_data=[]
+        matchteams=[]
+        matchteams_raw=[]
+        for runner in t['book']:
+            if runner['name']!='Draw':
+                matchteams_raw.append(runner['name'])
+                #try to match it,, if not,, fuzzy?
+                if runner['name'] in teams and teams[runner['name']]!="":
+                    match_data.append([teams[runner['name']],runner['price'],0])
+                    matchteams.append(teams[runner['name']])
+                else:
+                    #fuzzy..
+                    maxfuzz=0
+                    likely_team=""
+                    for b in bf_teams:
+                        r=fuzz.ratio(b,runner['name'])
+                        if r>maxfuzz:
+                            maxfuzz=r
+                            likely_team=b
+                    match_data.append([likely_team,runner['price'],1])
+                    matchteams.append(likely_team)
+            else:
+                match_data.append(["X",runner['price'],0])
+        matchteams.sort()
+        matchteams_raw.sort()
+        tt_matches.append({"matchup":matchteams,"matchup_raw":matchteams_raw,"book":match_data,'event_id':t['id']})
+
+    for t in tt_matches:
+        print("toto",t)
+    found=0
+    for t in tt_matches:
+        found=0
+        for b in bf_matches:
+            if t['matchup']==b['matchup']:
+                insert_to_database(t,b)
+                found=1
+                break
+    if not found:
+        print("NOT MATCHED:",t['matchup'],b['matchup'])
+
+                
+
+toto_id="591"#"826"
+bf_id="129"#"12117172"
+league="sweall"#"aleague"
+
+def process_comp(comp_meta):#toto_id,bf_id,league):
+    toto_data = pull_toto_data(comp_meta['toto'],comp_meta['league'])
+    betfair_data = pull_betfair_data(comp_meta['betfair'],comp_meta['league'])
+    do_insert(toto_data,betfair_data,comp_meta['league'])
+    print("finished processing :",comp_meta['league'],"<<<<<<<<<<>>>>>>>>>>>")
+
+"""comps=[{"toto":"591","betfair":"129","league":"sweall"},
+{"toto":"826","betfair":"12117172","league":"aleague"},
+{"toto":"567","betfair":"10932509","league":"epl"},
+{"toto":"1001","betfair":"12206014","league":"bahpre"},
+{"toto":"4319","betfair":"12231751","league":"canpre"}]
+"""
+
+#comps=[{"toto":"567","betfair":"10932509","league":"epl"}]
+comps=[]
+conn = pymysql.connect(host='localhost',user='local',passwd='oeijifjwejfio',db='arb_db')
+cur  = conn.cursor()
+cur.execute("select * from comps")
+rows = cur.fetchall()
+conn.close()
+for row in rows:
+    comps.append({"toto":str(row[4]),"betfair":str(row[2]),"league":row[1]})
+
+print(comps[0])
+
+def go():
+    threads = min(len(comps),10)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+        executor.map(process_comp, comps )
+
+while 1:
+    go()
+    time.sleep(30)#sleep 30secs before redownload

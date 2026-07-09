@@ -1,0 +1,20 @@
+/usr/local/lib/python3.8/dist-packages/fuzzywuzzy/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning
+  warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')
+[]
+[]
+[]
+[]
+[]
+[]
+[]
+[]
+[]
+[]
+['b3000']
+about to login..
+error in main loop API login: BETTING_RESTRICTED_LOCATION
+elapsed: 0.35031557083129883
+Traceback (most recent call last):
+  File "arb_monitor.py", line 1135, in <module>
+    cur.execute("insert into arber_scan_times (book_list,start_time,scan_time) values(%s,%s,%s)",(json.dumps(book_list),str(datetime.datetime.now())[0:19],round(int(time.time()-stime))))
+NameError: name 'stime' is not defined
