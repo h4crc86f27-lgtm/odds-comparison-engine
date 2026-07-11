@@ -362,9 +362,44 @@ def fetch_soccer_1x2_events():
         return []
 
 
+def event_has_series_id(event, comp_id):
+    """
+    Check if an event's series list contains a specific series ID.
+    
+    Compares series IDs as strings. Handles series as list of dicts or list of strings.
+    
+    Args:
+        event (dict): Raw Polymarket event dict
+        comp_id (str): Polymarket series ID to search for
+        
+    Returns:
+        bool: True if comp_id is found in event's series list
+    """
+    if not event or not comp_id:
+        return False
+    
+    series = event.get('series', [])
+    if not series:
+        return False
+    
+    # Series can be list of dicts with 'id' or list of strings
+    for item in series:
+        if isinstance(item, dict):
+            item_id = item.get('id')
+        else:
+            item_id = item
+        
+        if str(item_id) == str(comp_id):
+            return True
+    
+    return False
+
+
 def normalize_1x2_candidate(candidate):
     """
     Convert candidate event to normalized dictionary format.
+    
+    Extracts Polymarket series metadata from raw event if available.
     
     Args:
         candidate (dict): Candidate event dict from fetch_soccer_1x2_events()
@@ -383,6 +418,26 @@ def normalize_1x2_candidate(candidate):
     ask_x, odds_x = extract_best_ask_and_odds(mx)
     ask_2, odds_2 = extract_best_ask_and_odds(m2)
     
+    # Extract Polymarket series metadata from raw event
+    raw_event = candidate.get('raw', {})
+    series = raw_event.get('series', [])
+    comp_name = ''
+    comp_id = ''
+    series_slug = ''
+    sport_code = ''
+    
+    if series and isinstance(series, list) and len(series) > 0:
+        first_series = series[0]
+        if isinstance(first_series, dict):
+            comp_name = first_series.get('title', '')
+            comp_id = first_series.get('id', '')
+            series_slug = first_series.get('slug', '')
+    
+    # Extract sport code from event metadata
+    sport = raw_event.get('sport', {})
+    if isinstance(sport, dict):
+        sport_code = sport.get('sport')
+    
     return {
         'event_id': candidate.get('event_id'),
         'end_date': candidate.get('end_date'),
@@ -399,15 +454,30 @@ def normalize_1x2_candidate(candidate):
         'decimal_odds_1': odds_1,
         'decimal_odds_x': odds_x,
         'decimal_odds_2': odds_2,
+        'polymarket_comp_name': comp_name,
+        'polymarket_comp_id': comp_id,
+        'polymarket_series_slug': series_slug,
+        'polymarket_sport_code': sport_code,
     }
 
 
-def pull_data_polymarket():
+def pull_data_polymarket(comp_id=None, league=None):
     """
     Fetch event and market data from Polymarket API.
     
     Returns normalized list of upcoming soccer 1X2 events with best ask prices
     and calculated decimal odds.
+    
+    When comp_id is provided, filters results to events belonging to that
+    Polymarket series only. Comparison is string-based.
+    
+    Args:
+        comp_id (str, optional): Polymarket series ID to filter by. When provided,
+                                  only returns events belonging to this series.
+                                  Defaults to None (returns all upcoming soccer events).
+        league (str, optional): Sport/league identifier. Accepted for compatibility
+                               with existing provider calling pattern but not used
+                               for API filtering. Defaults to None.
     
     Returns:
         list: List of normalized event dicts with soccer 1X2 odds
@@ -428,6 +498,14 @@ def pull_data_polymarket():
         if event_id not in seen_event_ids:
             seen_event_ids.add(event_id)
             unique_normalized.append(item)
+    
+    # Filter by comp_id (series ID) if provided
+    if comp_id:
+        filtered = []
+        for item in unique_normalized:
+            if str(item.get('polymarket_comp_id')) == str(comp_id):
+                filtered.append(item)
+        return filtered
     
     return unique_normalized
 
