@@ -45,7 +45,7 @@ from arber_modules.yess365 import *
 from arber_modules.bet3000 import *
 from arber_modules.m8bets import *
 from arber_modules.bet635 import *
-from arber_modules.live90bet import *
+from arber_modules.polymarket import *
 
 
 
@@ -91,7 +91,7 @@ elif book_list==['winkel_toto']:
     thread_count=4
 elif book_list==['toto']:
     thread_count=2
-elif book_list==['live90bet']:
+elif book_list==['polymarket']:
     thread_count=5
 else:
     thread_count=2
@@ -183,7 +183,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
         betalpha_data={}
         bet3000_data={}
         bet635_data={}
-        live90bet_data={}
+        polymarket_data={}
 
         try:
             #print("m8bets compname:",comp_meta['m8bets'])
@@ -213,7 +213,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
             if "yess365" in book_list:
                 future_to_url[executor.submit(pull_data_yess365,  comp_meta['yess365'], comp_meta['league'])]="yess365"
 
-            if "toto" in book_list and comp_meta['live90bet'] != "":
+            if "toto" in book_list and comp_meta['toto'] != "":
                 future_to_url[executor.submit(pull_data_toto,  comp_meta['toto'], comp_meta['league'])]="toto"
 
             if "unibet" in book_list:
@@ -237,8 +237,8 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
             if "bet635" in book_list:
                 future_to_url[executor.submit(pull_data_bet635,  comp_meta['bet635'], comp_meta['league'])]= "bet635"
 
-            if "live90bet" in book_list and comp_meta['live90bet'] != "":
-                future_to_url[executor.submit(pull_data_live90bet,  comp_meta['live90bet'], comp_meta['league'])]= "live90bet"
+            if "polymarket" in book_list and comp_meta['polymarket'] != "":
+                future_to_url[executor.submit(pull_data_polymarket, comp_meta['polymarket'], comp_meta['league'])]= "polymarket"
 
             
             #if "m8bets" in book_list:
@@ -257,8 +257,9 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
                         print("done bet3000..")
                     elif book=="bet635":
                         bet635_data = data
-                    elif book=="live90bet":
-                        live90bet_data = data
+                    elif book=="polymarket":
+                        polymarket_data = data
+                        print(f"Polymarket events: {len(polymarket_data)}")
 
                     elif book=="betalpha":
                         betalpha_data = data
@@ -294,8 +295,9 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
                         print("done bet3000..")
                     elif book=="bet635":
                         bet635_data = data
-                    elif book=="live90bet":
-                        live90bet_data = data
+                    elif book=="polymarket":
+                        polymarket_data = data
+                        print(f"Polymarket events: {len(polymarket_data)}")
 
                     elif book=="betalpha":
                         betalpha_data = data
@@ -326,18 +328,6 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
         btime = time.time()
 
 
-
-        try:
-            pass#btime =time.time()
-            #print("inserting yess365 data..")
-            if live90bet_data !={}:
-                do_insert_live90bet(live90bet_data,betfair_data,comp_meta['league'],[])
-            #bingoal_splice_time+=time.time()-btime
-        except Exception as msg:
-            #toto_splice_time+=time.time()-btime
-            print("err on live90bet insert",str(msg))
-
-        
 
         try:
             pass#btime =time.time()
@@ -792,60 +782,57 @@ def get_comp_list():
         else:
             bet635 = ""
 
-        if row[26] is not None:
-            live90bet=row[26]
-        else:
-            live90bet=""
+        polymarket = row[26] if row[26] is not None else ""
 
         
         if row[6] is None:
             if row[8] is None:
                 if row[10] is not None:
                     if row[14] is not None:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) # << here just need to splice in something benign for ub if null
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) # << here just need to splice in something benign for ub if null
                     else:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) # << here just need to splice in something benign for ub if null
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) # << here just need to splice in something benign for ub if null
                 else:
                     if row[14] is not None:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
                     else:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
            
             else:
                 if row[10] is not None:
                     if row[14] is not None:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) # << here just need to splice in something benign for ub if null
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) # << here just need to splice in something benign for ub if null
                     else:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) # << here just need to splice in something benign for ub if null
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) # << here just need to splice in something benign for ub if null
                 else:
                     if row[14] is not None:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":row[8],"qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":row[8],"qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
                     else:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":row[8],"qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":row[8],"qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
         else:
             if row[8] is None:
                 if row[10] is not None:
                     if row[14] is not None:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) 
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) 
                     else:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) 
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) 
                 else:
                     if row[14] is not None:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
                     else:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
  
             else:
                 if row[10] is not None:
                     if row[14] is not None:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":row[8],"qrbet":{"name":row[9],"id":row[10]},"league":row[1]})
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":row[8],"qrbet":{"name":row[9],"id":row[10]},"league":row[1]})
                     else:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":row[8],"qrbet":{"name":row[9],"id":row[10]},"league":row[1]})
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":row[8],"qrbet":{"name":row[9],"id":row[10]},"league":row[1]})
                 else:
                     if row[14] is not None:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":row[8],"qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":row[8],"qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
                     else:
-                        comps.append({"live90bet":live90bet,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":row[8],"qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":row[8],"qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
     print("complen:",len(comps))
     #with open("/home/arb_bot/comp_dump.pickle","wb") as f:
     #    pickle.dump(comps,f)
