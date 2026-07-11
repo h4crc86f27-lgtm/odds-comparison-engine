@@ -45,7 +45,10 @@ from arber_modules.yess365 import *
 from arber_modules.bet3000 import *
 from arber_modules.m8bets import *
 from arber_modules.bet635 import *
-from arber_modules.polymarket import *
+from arber_modules.polymarket import (
+    pull_data_polymarket,
+    align_matches as align_matches_polymarket,
+)
 
 
 
@@ -76,7 +79,7 @@ db_name="arb_db_"+ version
 if len(sys.argv)>1:
     #get the books.
     book_list = sys.argv[1:]
-    
+
 else:
     print("default book list")
     book_list = ["bet3000","toto","bingoal","qrbet","winkel_toto","unibet","contra","yess365","betalpha","m8bets"]
@@ -95,7 +98,7 @@ elif book_list==['polymarket']:
     thread_count=5
 else:
     thread_count=2
-    
+
 print(book_list)
 def mud(rows):
     """Return a shuffled subset of rows for randomised processing order."""
@@ -139,7 +142,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
     global betfair_splice_time,unibet_splice_time,contra_splice_time,qrbet_splice_time,winkel_toto_splice_time,toto_splice_time
 
     global m8bets_alldata ## this will pull in from the thingy..
-    
+
     global book_list
     btime=time.time()
 
@@ -171,7 +174,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
 
     if betfair_data:
         btime=time.time()
-        
+
         #book_list =["yess365","toto","contra","winkel_toto"]
         unibet_data={}
         qrbet_data={}
@@ -190,7 +193,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
             #print("len m8betsalldata:",len(m8bets_alldata))
 
             m8bets_data=m8bets_alldata[comp_meta['m8bets']]
-            
+
 
             #print("IN COMP M8BETS MATCHES::",len(m8bets_data))
         except Exception as msg:
@@ -221,13 +224,13 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
 
             if "contra" in book_list:
                 future_to_url[executor.submit(pull_data_contra,  comp_meta['contra'], comp_meta['league'])]="contra"
-            
+
             if "qrbet" in book_list:
                 future_to_url[executor.submit(pull_data_qrbet,  comp_meta['qrbet'], comp_meta['league'])]="qrbet"
 
             if "winkel_toto" in book_list:
-                future_to_url[executor.submit(pull_data_winkel_toto,  comp_meta['winkel_toto'], comp_meta['league'])]="winkel_toto"  
-            
+                future_to_url[executor.submit(pull_data_winkel_toto,  comp_meta['winkel_toto'], comp_meta['league'])]="winkel_toto"
+
             if "bingoal" in book_list:
                 future_to_url[executor.submit(pull_data_bingoal,  comp_meta['bingoal'], comp_meta['league'],{"kvalue":kvalue,"b_session":b_session,"ust":ust})] = "bingoal"
 
@@ -240,13 +243,13 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
             if "polymarket" in book_list and comp_meta['polymarket'] != "":
                 future_to_url[executor.submit(pull_data_polymarket, comp_meta['polymarket'], comp_meta['league'])]= "polymarket"
 
-            
+
             #if "m8bets" in book_list:
             #    future_to_url[executor.submit(pull_data_m8bets,  comp_meta['m8bets'], comp_meta['league'])]= "m8bets"
-                  
-            # 
+
+            #
             #bingoal_data={}
-            #             
+            #
             for future in concurrent.futures.as_completed(future_to_url):
                 book = future_to_url[future]
                 #rint(book)
@@ -263,7 +266,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
 
                     elif book=="betalpha":
                         betalpha_data = data
-                    
+
                     elif book=="toto":
                         toto_data = data
                         #print(toto_data)
@@ -301,7 +304,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
 
                     elif book=="betalpha":
                         betalpha_data = data
-                    
+
                     elif book=="toto":
                         toto_data = data
                         #print(toto_data)
@@ -339,7 +342,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
             #toto_splice_time+=time.time()-btime
             print("err on bet635 insert",str(msg))
 
-        
+
         try:
             pass#btime =time.time()
             #print("inserting yess365 data..")
@@ -350,7 +353,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
             #toto_splice_time+=time.time()-btime
             print("err on bet3000 insert",str(msg))
 
-        
+
         try:
             pass#btime =time.time()
             #print("inserting yess365 data..")
@@ -389,11 +392,11 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
                 pass#print("kipping winkto insert")
             else:
                 pass#print("attempting winkel_toto insert!!")
-                
+
                 if winkel_toto_data!={}:
                     do_insert_winkel_toto(winkel_toto_data,betfair_data,comp_meta['league'],winkel_toto_teams)
                 winkel_toto_splice_time+=time.time()-btime
-                
+
             #pass#print("finished winkel_toto insert <><>")
         except Exception as msg:
             winkel_toto_splice_time+=time.time()-btime
@@ -414,7 +417,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
         btime = time.time()
 
         try:
-            
+
             if unibet_data !={}:
                 do_insert_unibet(unibet_data,betfair_data,comp_meta['league'],unibet_teams)
             unibet_splice_time+=time.time()-btime
@@ -424,7 +427,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
         btime = time.time()
         try:
             pass#print("INSERTTING CONTRA!!!!!!!!!!!")
-            
+
             if contra_data!={}:
                 do_insert_contra(contra_data,betfair_data,comp_meta['league'],contra_teams)
             contra_splice_time+=time.time()-btime
@@ -441,7 +444,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
         except Exception as msg:
             qrbet_splice_time+=time.time()-btime
             pass#print("err on qrbet insert:",str(msg))
-    
+
         try:
             #btime = time.time()
             if m8bets_data!={}:
@@ -450,6 +453,20 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
         except Exception as msg:
             #qrbet_splice_time+=time.time()-btime
             pass#print("err on qrbet insert:",str(msg))
+
+        try:
+            if polymarket_data and len(polymarket_data) > 0:
+                bf_data = convert_ref_matches(betfair_data)
+                polymarket_matches = align_matches_polymarket(
+                    polymarket_data,
+                    bf_data,
+                    comp_meta['league']
+                )
+                print(f"Polymarket matched events: {len(polymarket_matches)}")
+                for match in polymarket_matches:
+                    print(f"  {match['polymarket_event_id']} | {match['betfair_event_id']} | {match['polymarket_home']} vs {match['polymarket_away']} | {match['betfair_home']} vs {match['betfair_away']} | {match['home_fuzzy']}/{match['away_fuzzy']} | flipped={match['flipped']}")
+        except Exception as msg:
+            print("Polymarket alignment error:", str(msg))
     else:
         pass#pass#print("skipping crawl for this comp-- betfair_data ((NONE))")
 
@@ -493,16 +510,16 @@ def dump():
     #dump
     with open("/var/www/html/dump.pkl","wb") as f:
         pickle.dump(out,f)
-    
-    
+
+
 
     ## r win
-    
+
     eventids=[]#pull_type_events()#[32426621,32428487]
-    
+
     market_dict = {}
     id_dict={} # this is for mapping back to market dict
-    
+
     cats = pull_markets_r(eventids,"WIN")
     for cat in cats:
         track =cat.event.venue
@@ -518,7 +535,7 @@ def dump():
         #    print("!!!!!!!",str(msg))
 
         try:
-            tracku = track.upper() 
+            tracku = track.upper()
         except:
             tracku=""
         if str(event_type)=="4339":
@@ -528,11 +545,11 @@ def dump():
 
         market_dict[tracku + "-" + racenum + "_" + race_code] = {"event_type":event_type,"event_id":eventid,"market_id":market_id,"start_time":market_start_time,"market":[]}
         id_dict[cat.market_id] = tracku + "-" + racenum + "_" + race_code
-    
+
     market_ids = []
     for md in market_dict:
         market_ids.append(market_dict[md]['market_id'])
-        
+
     price_filter=betfairlightweight.filters.price_projection(price_data=['EX_BEST_OFFERS','EX_TRADED']) # EX_TRADED
 
 
@@ -548,7 +565,7 @@ def dump():
     for chunk in chunks:
         book_response = trading.betting.list_market_book(market_ids=chunk, price_projection=price_filter)
         books.extend(book_response)
-        
+
     for book in books:
         mid = book.market_id
         runners = book.runners
@@ -564,7 +581,7 @@ def dump():
             backs= runner.ex.available_to_back
             lays = runner.ex.available_to_lay
             market_dict[id_dict[mid]]['market'].append({"runner_id":runner_id,"lpt":lpt,"backs":backs,"lays":lays,"traded":traded})
-    
+
     with open("/var/www/html/dmp.pkl","wb") as f:
         pickle.dump(market_dict,f)
 
@@ -572,10 +589,10 @@ def dump():
     ## r place
     if 1:
         eventids=[]#pull_type_events()#[32426621,32428487]
-        
+
         market_dict = {}
         id_dict={} # this is for mapping back to market dict
-        
+
         cats = pull_markets_r(eventids,"PLACE")
         for cat in cats:
             track = cat.event.venue #event.name.split("(")[0].strip()
@@ -589,7 +606,7 @@ def dump():
             except Exception as msg:
                 event_type = ""
             #    print("!!!!!!!",str(msg))
-                
+
 
             try:
                 tracku = track.upper()
@@ -598,11 +615,11 @@ def dump():
 
             market_dict[tracku + "-" + str(market_id)] = {"event_type":event_type,"event_id":eventid,"market_id":market_id,"start_time":market_start_time,"market":[]}
             id_dict[cat.market_id] = tracku + "-" + str(market_id)
-        
+
         market_ids = []
         for md in market_dict:
             market_ids.append(market_dict[md]['market_id'])
-            
+
         price_filter=betfairlightweight.filters.price_projection(price_data=['EX_BEST_OFFERS'])
 
 
@@ -618,7 +635,7 @@ def dump():
         for chunk in chunks:
             book_response = trading.betting.list_market_book(market_ids=chunk, price_projection=price_filter)
             books.extend(book_response)
-            
+
         for book in books:
             mid = book.market_id
             runners = book.runners
@@ -634,7 +651,7 @@ def dump():
                 backs= runner.ex.available_to_back
                 lays = runner.ex.available_to_lay
                 market_dict[id_dict[mid]]['market'].append({"runner_id":runner_id,"lpt":lpt,"backs":backs,"lays":lays})
-        
+
         with open("/var/www/html/dmp_plc.pkl","wb") as f:
             pickle.dump(market_dict,f)
     #wim
@@ -651,7 +668,7 @@ def dump():
     match_ids= pull_markets(mens_events,"MATCH_ODDS")
     for mi in match_ids:
         mens[mi.event.id]['h2h_id']=mi.market_id
-        id_dict[mi.market_id] = [mi.event.id,"h2h_data"]  
+        id_dict[mi.market_id] = [mi.event.id,"h2h_data"]
     #here pull down the set ods
     set_ids= pull_markets(mens_events,"SET_BETTING")
     for si in set_ids:
@@ -679,7 +696,7 @@ def dump():
                 lpt = 0
             event_id, which_market = id_dict[mid]
             mens[event_id][which_market].append({"backs":backs,"lays":lays,"lpt":lpt,"total_matched":runner.total_matched})
-    
+
     with open("/var/www/html/menwim.pkl","wb") as f:
         pickle.dump(mens,f)
     #fems=[]
@@ -696,7 +713,7 @@ def dump():
     match_ids= pull_markets(womens_events,"MATCH_ODDS")
     for mi in match_ids:
         womens[mi.event.id]['h2h_id']=mi.market_id
-        id_dict[mi.market_id] = [mi.event.id,"h2h_data"]  
+        id_dict[mi.market_id] = [mi.event.id,"h2h_data"]
     #here pull down the set ods
     set_ids= pull_markets(womens_events,"SET_BETTING")
     for si in set_ids:
@@ -727,8 +744,8 @@ def dump():
     #fems=[]
     with open("/var/www/html/womenwim.pkl","wb") as f:
         pickle.dump(womens,f)
-    
-        
+
+
 #comps=[{"toto":"567","betfair":"10932509","league":"epl"}]
 def get_comp_list():
     """
@@ -758,7 +775,7 @@ def get_comp_list():
             yess365=row[16]
         else:
             yess365=""
-        
+
         if row[18] is not None:
             betalpha=row[18]
         else:
@@ -774,8 +791,8 @@ def get_comp_list():
             m8bets = row[22]
         else:
             m8bets = ""
-        
-        
+
+
 
         if row[24] is not None:
             bet635 = row[24]
@@ -784,7 +801,7 @@ def get_comp_list():
 
         polymarket = row[26] if row[26] is not None else ""
 
-        
+
         if row[6] is None:
             if row[8] is None:
                 if row[10] is not None:
@@ -797,7 +814,7 @@ def get_comp_list():
                         comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
                     else:
                         comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(""),"contra":"","qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
-           
+
             else:
                 if row[10] is not None:
                     if row[14] is not None:
@@ -813,15 +830,15 @@ def get_comp_list():
             if row[8] is None:
                 if row[10] is not None:
                     if row[14] is not None:
-                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) 
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]})
                     else:
-                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]}) 
+                        comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":row[9],"id":row[10]},"league":row[1]})
                 else:
                     if row[14] is not None:
                         comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":row[14],"winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
                     else:
                         comps.append({"polymarket":polymarket,"bet635":bet635,"m8bets":m8bets,"bet3000":bet3000,"betalpha":betalpha,"yess365":yess365,"bingoal":"","winkel_toto":winkel_id,"toto":str(row[4]),"betfair":str(row[2]),"unibet":str(row[6]),"contra":"","qrbet":{"name":"","id":""},"league":row[1]}) # << here just need to splice in something benign for ub if null
- 
+
             else:
                 if row[10] is not None:
                     if row[14] is not None:
@@ -861,7 +878,7 @@ def go(comps):
                 m8bets_alldata = pull_data_m8bets() # <<
                 with open("/home/arb_bot/gamma/m8bet_comp_data.pickle","wb") as f:
                     pickle.dump(m8bets_alldata,f)
-                    
+
                 print(list(m8bets_alldata))
                 break
             except Exception as msg:
@@ -910,11 +927,11 @@ while 1:#isnt_running:
             x=cur2.execute("insert into arber_logins (book_list,timestamp) values(%s,%s)",(json.dumps(book_list),str(datetime.datetime.now())[0:19]))
             conn2.commit()
             conn2.close()
-            
+
             print("logging in!")
         else:
             print("trading session is not yet logged out..")
-        
+
         print("team time..")
         contra_teams = {}#get_team_list_contra()
         pass#print("got contra")
@@ -979,9 +996,9 @@ while 1:#isnt_running:
 
         if book_list == ['bet3000'] or book_list ==['unibet']:
             try:
-                
+
                 dump()
-               
+
             except Exception as msg:
                 pass#print("dumperr:",str(msg))
 
@@ -1005,9 +1022,9 @@ while 1:#isnt_running:
         except Exception as msg:
             pass#print("err on contra_raw",str(msg))
         #if random.randint(1,2)==1:
-        
 
-        
+
+
         try:
             if random.randint(1,180)==1:#change this to happen once every few hours,, so 1,180 would be 1hr,, (assuming 20s scan time)
                 pass#do_m8bets_raw() # >> when i decide on course of action
@@ -1017,7 +1034,7 @@ while 1:#isnt_running:
         pass#print("raw took:",time.time()-stime)
 
         print("raw took:",time.time()-rtime)
-        
+
         active_betfair_comps = pull_active_comps()
         #time.sleep(1)#lets look at contras raws..
         p_time=time.time()
@@ -1028,7 +1045,7 @@ while 1:#isnt_running:
         for abc in active_betfair_comps:
             compids.append(str(abc))
 
-        
+
 
         #now i create the comp dict.. based on the events coming out of all_events.. and join via the lookup
         #here pull down the event lookup into event_dict. with comp key..comp dict?
@@ -1041,14 +1058,14 @@ while 1:#isnt_running:
 
         #with open("event_lookup.pickle","wb") as f:
         #    pickle.dump(event_lookup,f)
-        
+
         #with open("all_events.pickle","wb") as f:
         #    pickle.dump(all_events,f)
 
         #print(event_lookup)
         #print(len(event_lookup))
         #now i loop over all events,, and if found in the event lookup, add to the comp dict..
-        
+
         conn.close()
 
         #here do random bingoal sec check..
@@ -1073,7 +1090,7 @@ while 1:#isnt_running:
             pass#b_session=""
         ztime = time.time()
 
-       
+
 
         if 1:#try:
             ttime = time.time()
@@ -1083,8 +1100,8 @@ while 1:#isnt_running:
             for c in comps:
                 all_comps.append(c['betfair'])
             all_events =  pull_all_events(all_comps) ## this s
-            
-            
+
+
             print("all_events:",len(all_events))
             for ae in all_events:
                 #print(ae.event.id)
@@ -1092,11 +1109,11 @@ while 1:#isnt_running:
                 if event_id in event_lookup:
                     #add to the comp_dict
                     #print("Adding:",event_id)
-                    
+
                     if event_lookup[event_id] not in comp_dict:
                         comp_dict[event_lookup[event_id] ]=[]
                     comp_dict[event_lookup[event_id] ].append(ae)
-            
+
             #print("lencompdict:",len(comp_dict))
             print(comp_dict)
             #print("epl cd len:",len(comp_dict[10932509]))
@@ -1109,7 +1126,7 @@ while 1:#isnt_running:
             print("betfair data dict took:",time.time()-ztime,len(betfair_data_dict))
             print("got comps..took ",time.time()-ttime)
             go(comps)
-        
+
         else:#except Exception as msg:
             pass#print("err on scan",str(msg))
 
@@ -1128,7 +1145,7 @@ while 1:#isnt_running:
         print("logged out!")
     except Exception as msg:
         print("error in main loop",str(msg))
-    
+
     timenow = time.time()
     elapsed = timenow - last_cycle_time
     print("elapsed:",elapsed)
