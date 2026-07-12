@@ -48,6 +48,7 @@ from arber_modules.bet635 import *
 from arber_modules.polymarket import (
     pull_data_polymarket,
     align_matches as align_matches_polymarket,
+    insert_to_database_polymarket,
 )
 
 
@@ -465,6 +466,10 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
                 print(f"Polymarket matched events: {len(polymarket_matches)}")
                 for match in polymarket_matches:
                     print(f"  {match['polymarket_event_id']} | {match['betfair_event_id']} | {match['polymarket_home']} vs {match['polymarket_away']} | {match['betfair_home']} vs {match['betfair_away']} | {match['home_fuzzy']}/{match['away_fuzzy']} | flipped={match['flipped']}")
+                    insert_to_database_polymarket(
+                        match,
+                        comp_meta["league"]
+                    )
         except Exception as msg:
             print("Polymarket alignment error:", str(msg))
     else:

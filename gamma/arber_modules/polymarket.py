@@ -15,6 +15,8 @@ import json
 import urllib.request
 import urllib.error
 import sys
+import pymysql
+db_name="arb_db_beta"
 from datetime import datetime, timezone
 from fuzzywuzzy import fuzz
 
@@ -922,22 +924,178 @@ def align_matches(polymarket_data, ref_data, league=None):
 
 
 
-def insert_to_database_polymarket(matched_events):
+def insert_to_database_polymarket(matched_event, league):
     """
-    Insert matched Polymarket events and odds into database.
+    Write or update a matched Polymarket/Betfair event pair in polymarket_matches.
+
+    Unpacks Polymarket 1X2 odds and Betfair odds from the matched event,
+    applies home/away flip correction if needed, assembles the full odds JSON,
+    then either updates an existing row or inserts a new one.
 
     Args:
-        matched_events (dict): Aligned event and odds data
-
-    Intended behavior (not yet implemented):
-    - Connect to arb_db_beta database
-    - Insert event records and odds into comparison tables
-    - Handle upserts for existing events
-    - Write odds history for trend tracking
-
-    Currently: stub performing no database operations
+        matched_event (dict): Single matched event from align_matches() with:
+            - polymarket_event_id, betfair_event_id
+            - polymarket_home, polymarket_away
+            - betfair_home, betfair_away
+            - home_fuzzy, away_fuzzy (stored as t1_polymarket_fuzzy, t2_polymarket_fuzzy)
+            - flipped (bool): whether teams are in reversed order
+            - polymarket_data: normalized Polymarket event dict
+            - betfair_data: Betfair reference data dict
+        league (str): Sport/league identifier for the match
     """
-    pass
+    try:
+        conn = pymysql.connect(host='localhost', user='local', passwd='oeijifjwejfio', db=db_name)
+        cur = conn.cursor()
+
+        # Extract matched event identifiers
+        poly_event_id = matched_event.get('polymarket_event_id')
+        bf_event_id = matched_event.get('betfair_event_id')
+        flipped = matched_event.get('flipped', False)
+        home_fuzzy = matched_event.get('home_fuzzy', 0)
+        away_fuzzy = matched_event.get('away_fuzzy', 0)
+
+        # Extract Polymarket data
+        poly_data = matched_event.get('polymarket_data', {})
+        poly_home = matched_event.get('polymarket_home')
+        poly_away = matched_event.get('polymarket_away')
+        poly_1_odds = poly_data.get('decimal_odds_1', 0)
+        poly_x_odds = poly_data.get('decimal_odds_x', 0)
+        poly_2_odds = poly_data.get('decimal_odds_2', 0)
+
+        # Extract Betfair data
+        bf_data = matched_event.get('betfair_data', {})
+        bf_home = matched_event.get('betfair_home')
+        bf_away = matched_event.get('betfair_away')
+        bf_timestamp = bf_data.get('timestamp', 0)
+
+        # Extract Betfair back/lay odds (1X2 match result)
+        bf_back_book = bf_data.get('back_book', [])
+        bf_lay_book = bf_data.get('lay_book', [])
+
+        bf_1_last_back_odds = 0
+        bf_1_last_back_vol = 0
+        bf_1_lowest_back_odds = 0
+        bf_1_lowest_back_vol = 0
+        bf_1_lay_odds = 0
+        bf_1_lay_vol = 0
+
+        bf_x_last_back_odds = 0
+        bf_x_last_back_vol = 0
+        bf_x_lowest_back_odds = 0
+        bf_x_lowest_back_vol = 0
+        bf_x_lay_odds = 0
+        bf_x_lay_vol = 0
+
+        bf_2_last_back_odds = 0
+        bf_2_last_back_vol = 0
+        bf_2_lowest_back_odds = 0
+        bf_2_lowest_back_vol = 0
+        bf_2_lay_odds = 0
+        bf_2_lay_vol = 0
+
+        # Parse Betfair back odds for 1X2
+        for runner in bf_back_book:
+            if runner[0] == bf_home:
+                bf_1_last_back_odds = runner[1]
+                bf_1_last_back_vol = runner[2]
+                bf_1_lowest_back_odds = runner[3]
+                bf_1_lowest_back_vol = runner[4]
+            elif runner[0] == bf_away:
+                bf_2_last_back_odds = runner[1]
+                bf_2_last_back_vol = runner[2]
+                bf_2_lowest_back_odds = runner[3]
+                bf_2_lowest_back_vol = runner[4]
+            else:
+                bf_x_last_back_odds = runner[1]
+                bf_x_last_back_vol = runner[2]
+                bf_x_lowest_back_odds = runner[3]
+                bf_x_lowest_back_vol = runner[4]
+
+        # Parse Betfair lay odds for 1X2
+        for runner in bf_lay_book:
+            if runner[0] == bf_home:
+                bf_1_lay_odds = runner[1]
+                bf_1_lay_vol = runner[2]
+            elif runner[0] == bf_away:
+                bf_2_lay_odds = runner[1]
+                bf_2_lay_vol = runner[2]
+            else:
+                bf_x_lay_odds = runner[1]
+                bf_x_lay_vol = runner[2]
+
+        # Handle flipped orientation
+        poly_teamnames = [poly_home, poly_away]
+        bf_teamnames = [bf_home, bf_away]
+
+        if flipped:
+            # Flip Polymarket side only (reorder to match Betfair reference orientation)
+            temp = poly_1_odds
+            poly_1_odds = poly_2_odds
+            poly_2_odds = temp
+
+            temp = poly_teamnames[0]
+            poly_teamnames[0] = poly_teamnames[1]
+            poly_teamnames[1] = temp
+
+        # Build odds JSON (1X2 only for Polymarket)
+        odds_json = {
+            "polymarket_1_odds": poly_1_odds,
+            "polymarket_x_odds": poly_x_odds,
+            "polymarket_2_odds": poly_2_odds,
+            "bf_1_odds": {
+                "vwap": bf_data.get('vwaps', {}).get('1', 0),
+                "last_back_price": bf_1_last_back_odds,
+                "last_back_vol": bf_1_last_back_vol,
+                "lowest_back_price": bf_1_lowest_back_odds,
+                "lowest_back_vol": bf_1_lowest_back_vol,
+                "lay_price": bf_1_lay_odds,
+                "lay_vol": bf_1_lay_vol
+            },
+            "bf_x_odds": {
+                "vwap": bf_data.get('vwaps', {}).get('X', 0),
+                "last_back_price": bf_x_last_back_odds,
+                "last_back_vol": bf_x_last_back_vol,
+                "lowest_back_price": bf_x_lowest_back_odds,
+                "lowest_back_vol": bf_x_lowest_back_vol,
+                "lay_price": bf_x_lay_odds,
+                "lay_vol": bf_x_lay_vol
+            },
+            "bf_2_odds": {
+                "vwap": bf_data.get('vwaps', {}).get('2', 0),
+                "last_back_price": bf_2_last_back_odds,
+                "last_back_vol": bf_2_last_back_vol,
+                "lowest_back_price": bf_2_lowest_back_odds,
+                "lowest_back_vol": bf_2_lowest_back_vol,
+                "lay_price": bf_2_lay_odds,
+                "lay_vol": bf_2_lay_vol
+            }
+        }
+
+        # Check for existing event
+        cur.execute(
+            "select * from polymarket_matches where polymarket_event_id=%s and betfair_event_id=%s",
+            (poly_event_id, bf_event_id)
+        )
+        rows = cur.fetchall()
+
+        if len(rows) > 0:
+            # Update existing record
+            cur.execute(
+                "update polymarket_matches set timestamp=%s,polymarket_data=%s,t1_polymarket_fuzzy=%s,t2_polymarket_fuzzy=%s where polymarket_event_id=%s and betfair_event_id=%s",
+                (bf_timestamp, json.dumps(odds_json), home_fuzzy, away_fuzzy, poly_event_id, bf_event_id)
+            )
+        else:
+            # Insert new record
+            cur.execute(
+                "insert into polymarket_matches (timestamp,polymarket_event_id,betfair_event_id,team_1_polymarket,team_2_polymarket,team_1_betfair,team_2_betfair,polymarket_data,t1_polymarket_fuzzy,t2_polymarket_fuzzy,ignored,league) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (bf_timestamp, poly_event_id, bf_event_id, poly_teamnames[0], poly_teamnames[1], bf_teamnames[0], bf_teamnames[1], json.dumps(odds_json), home_fuzzy, away_fuzzy, 0, league)
+            )
+
+        conn.commit()
+        conn.close()
+
+    except Exception as e:
+        print(f"Error inserting Polymarket match: {str(e)}")
 
 
 def do_insert_polymarket(league, raw_data):
