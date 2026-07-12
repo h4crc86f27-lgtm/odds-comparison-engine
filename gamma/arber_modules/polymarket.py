@@ -14,6 +14,7 @@ No database writes. No staging. Feature branch only.
 import json
 import urllib.request
 import urllib.error
+import urllib.parse
 import sys
 import pymysql
 db_name="arb_db_beta"
@@ -352,6 +353,150 @@ def extract_best_ask_and_odds(market):
         return (None, None)
 
 
+def fetch_soccer_1x2_events_by_series(comp_id):
+    """
+    Fetch 1X2 events for a specific Polymarket series using keyset endpoint.
+
+    Requests events with series_id=comp_id from the keyset endpoint, which
+    supports cursor pagination if next_cursor is present in response.
+
+    Filters:
+    - Excludes non-match event titles
+    - Includes only events with future endDate
+    - Identifies exactly 1X2 (3 markets: 1, X, 2)
+    - Filters out non-match market questions
+    - Sorts by endDate ascending (soonest first)
+
+    Args:
+        comp_id (str): Polymarket series ID
+
+    Returns:
+        list: List of candidate event dicts sorted by endDate, or [] on error
+    """
+    base_url = "https://gamma-api.polymarket.com/events/keyset"
+    raw_events = []
+    next_cursor = None
+    limit = 100
+
+    try:
+        # Phase 1: Fetch all raw events with cursor pagination
+        while True:
+            # Build parameters fresh on each iteration, including cursor if present
+            params = {
+                'series_id': comp_id,
+                'closed': 'false',
+                'limit': limit,
+            }
+            if next_cursor:
+                params['cursor'] = next_cursor
+
+            query_string = urllib.parse.urlencode(params)
+
+            # Try with active=true first; will omit if it causes issues
+            url_with_active = f"{base_url}?{query_string}&active=true"
+
+            request = urllib.request.Request(
+                url_with_active,
+                headers={'User-Agent': 'Mozilla/5.0'}
+            )
+
+            try:
+                with urllib.request.urlopen(request, timeout=30) as response:
+                    response_data = json.loads(response.read().decode('utf-8'))
+            except urllib.error.HTTPError as e:
+                if e.code == 422:
+                    # If active=true causes 422, retry without it
+                    # Preserve cursor parameter in retry
+                    url_without_active = f"{base_url}?{query_string}"
+                    request = urllib.request.Request(
+                        url_without_active,
+                        headers={'User-Agent': 'Mozilla/5.0'}
+                    )
+                    with urllib.request.urlopen(request, timeout=30) as response:
+                        response_data = json.loads(response.read().decode('utf-8'))
+                else:
+                    raise
+
+            # Handle response shape: could be {"events": [...], "next_cursor": ...}
+            # or just a list
+            if isinstance(response_data, dict):
+                events = response_data.get('events', [])
+                next_cursor = response_data.get('next_cursor')
+            elif isinstance(response_data, list):
+                events = response_data
+                next_cursor = None
+            else:
+                break
+
+            if not events:
+                break
+
+            raw_events.extend(events)
+
+            # Stop if no next_cursor
+            if not next_cursor:
+                break
+
+        # Phase 2: Deduplicate by event_id, keeping first record
+        seen_ids = set()
+        unique_events = []
+
+        for event in raw_events:
+            if not isinstance(event, dict):
+                continue
+
+            event_id = event.get('id')
+            if not event_id:
+                continue
+
+            if event_id in seen_ids:
+                continue
+
+            seen_ids.add(event_id)
+            unique_events.append(event)
+
+        # Phase 3: Filter and identify 1X2 candidates
+        candidates = []
+
+        for event in unique_events:
+            title = event.get('title') or event.get('name') or ''
+
+            # Check for excluded event titles
+            if is_excluded_event_title(title):
+                continue
+
+            # Check if event is in the future
+            if not is_future_event(event):
+                continue
+
+            markets_1x2 = identify_1x2_markets(event)
+            if markets_1x2:
+                # Add 1X2 market info to event
+                candidate = {
+                    'event_id': event.get('id'),
+                    'end_date': event.get('endDate') or event.get('endDateIso') or '',
+                    'title': title,
+                    'markets_1x2': markets_1x2,
+                    'raw': event
+                }
+                candidates.append(candidate)
+
+        # Sort by endDate ascending (soonest first)
+        candidates.sort(key=lambda c: c.get('end_date', ''))
+
+        return candidates
+
+    except urllib.error.URLError as e:
+        print(f"ERROR: comp_id={comp_id}: URLError: {e}", file=sys.stderr)
+        return []
+    except json.JSONDecodeError as e:
+        print(f"ERROR: comp_id={comp_id}: JSONDecodeError: {e}", file=sys.stderr)
+        return []
+    except Exception as e:
+        print(f"ERROR: comp_id={comp_id}: {type(e).__name__}: {e}", file=sys.stderr)
+        return []
+
+
 def fetch_soccer_1x2_events():
     """
     Fetch events from tag_id=100350 (soccer tag) with pagination.
@@ -558,13 +703,15 @@ def pull_data_polymarket(comp_id=None, league=None):
     Returns normalized list of upcoming soccer 1X2 events with best ask prices
     and calculated decimal odds.
 
-    When comp_id is provided, filters results to events belonging to that
-    Polymarket series only. Comparison is string-based.
+    When comp_id is provided, fetches events for that specific Polymarket series
+    using the keyset endpoint for efficiency. When comp_id is not provided,
+    fetches all upcoming soccer events using the tag-based endpoint.
 
     Args:
-        comp_id (str, optional): Polymarket series ID to filter by. When provided,
-                                  only returns events belonging to this series.
-                                  Defaults to None (returns all upcoming soccer events).
+        comp_id (str, optional): Polymarket series ID to fetch. When provided,
+                                  only fetches events belonging to this series
+                                  directly. Defaults to None (fetches all upcoming
+                                  soccer events).
         league (str, optional): Sport/league identifier. Accepted for compatibility
                                with existing provider calling pattern but not used
                                for API filtering. Defaults to None.
@@ -572,7 +719,11 @@ def pull_data_polymarket(comp_id=None, league=None):
     Returns:
         list: List of normalized event dicts with soccer 1X2 odds
     """
-    candidates = fetch_soccer_1x2_events()
+    # Use targeted fetch if comp_id is provided, otherwise use broad soccer tag
+    if comp_id:
+        candidates = fetch_soccer_1x2_events_by_series(comp_id)
+    else:
+        candidates = fetch_soccer_1x2_events()
 
     if not candidates:
         return []
@@ -588,14 +739,6 @@ def pull_data_polymarket(comp_id=None, league=None):
         if event_id not in seen_event_ids:
             seen_event_ids.add(event_id)
             unique_normalized.append(item)
-
-    # Filter by comp_id (series ID) if provided
-    if comp_id:
-        filtered = []
-        for item in unique_normalized:
-            if str(item.get('polymarket_comp_id')) == str(comp_id):
-                filtered.append(item)
-        return filtered
 
     return unique_normalized
 
