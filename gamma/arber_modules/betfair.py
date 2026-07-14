@@ -398,7 +398,7 @@ def pull_type_events(compid=7):#horse racing
 def pull_all_events(compids):
 
     start_date = datetime.datetime.now()
-    end_date = start_date + datetime.timedelta(days=40)
+    end_date = start_date + datetime.timedelta(days=10)
     # Convert the dates to the Betfair API date format (ISO 8601 format)
     start_date_str = start_date.strftime('%Y-%m-%dT%H:%M:%SZ')
     end_date_str = end_date.strftime('%Y-%m-%dT%H:%M:%SZ')

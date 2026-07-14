@@ -22,6 +22,17 @@ from datetime import datetime, timezone
 from fuzzywuzzy import fuzz
 
 
+
+def mem(tag):
+    rss = 0
+    with open("/proc/self/status") as f:
+        for line in f:
+            if line.startswith("VmRSS:"):
+                rss = int(line.split()[1]) / 1024
+                break
+    print(f"[MEM] {tag}: {rss:.1f} MB")
+
+
 def safe_float(value, default=0.0):
     """
     Safely convert a value to float with fallback.
@@ -388,7 +399,7 @@ def fetch_soccer_1x2_events_by_series(comp_id):
                 'limit': limit,
             }
             if next_cursor:
-                params['cursor'] = next_cursor
+                params['after_cursor'] = next_cursor
 
             query_string = urllib.parse.urlencode(params)
 
@@ -431,7 +442,9 @@ def fetch_soccer_1x2_events_by_series(comp_id):
             if not events:
                 break
 
+            print(f"[POLY PAGE] page_events={len(events)} total_before={len(raw_events)}")
             raw_events.extend(events)
+            print(f"[POLY PAGE] total_after={len(raw_events)} next_cursor={next_cursor}")
 
             # Stop if no next_cursor
             if not next_cursor:
@@ -534,7 +547,9 @@ def fetch_soccer_1x2_events():
             if not events:
                 break
 
+            print(f"[POLY PAGE] page_events={len(events)} total_before={len(raw_events)}")
             raw_events.extend(events)
+            print(f"[POLY PAGE] total_after={len(raw_events)} next_cursor={next_cursor}")
 
             # Continue pagination if we got a full batch
             if len(events) < limit:
@@ -721,15 +736,21 @@ def pull_data_polymarket(comp_id=None, league=None):
     """
     # Use targeted fetch if comp_id is provided, otherwise use broad soccer tag
     if comp_id:
+        mem('POLY before series fetch')
         candidates = fetch_soccer_1x2_events_by_series(comp_id)
+        mem('POLY after series fetch')
     else:
+        mem('POLY before broad fetch')
         candidates = fetch_soccer_1x2_events()
+        mem('POLY after broad fetch')
 
     if not candidates:
         return []
 
     # Normalize candidates for output
+    mem('POLY before normalize')
     normalized = [normalize_1x2_candidate(c) for c in candidates]
+    mem('POLY after normalize')
 
     # Final deduplication by event_id
     seen_event_ids = set()
@@ -740,6 +761,7 @@ def pull_data_polymarket(comp_id=None, league=None):
             seen_event_ids.add(event_id)
             unique_normalized.append(item)
 
+    mem('POLY END')
     return unique_normalized
 
 

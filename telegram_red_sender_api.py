@@ -1,12 +1,14 @@
 from telethon import TelegramClient, sync, events
 from telethon.errors import SessionPasswordNeededError
 from telethon.sync import TelegramClient
+from telethon.errors.rpcerrorlist import PeerFloodError
 from telethon.tl.types import InputPeerUser, InputPeerChannel
 #red checker
 import pymysql
 import json
 import telegram_send
 import time
+import traceback
 import datetime
 
 
@@ -16,8 +18,8 @@ user_dict={}
 api_id = 29423384#18636796
 api_hash = '8e5a3c0c69708e9c61dadf04fd0eb678'
 
-phone = ''
-username = '@Arberbot'
+phone = '+31639413206'
+username = '@oddsbotalerts'
 
 # (2) Create the client and connect
 print("/home/arb_bot/" + username + ".session")
@@ -67,15 +69,15 @@ def send_alert_checker(send_str,insert_str,matchup,b1,bx,b2,bf1,bfx,bf2,league,m
         if exchange_odds == 0:
             return False
         percentage_difference = ((book_odds - exchange_odds) / exchange_odds) * 100
-        return percentage_difference >= 2.0
+        return percentage_difference >= 1.0
 
-    # Check if the odds meet the 2% threshold
+    # Check if the odds meet the 1.0% threshold
     if not (
         meets_threshold(b1, bf1) or 
         meets_threshold(bx, bfx) or 
         meets_threshold(b2, bf2)
     ):
-        print("No alert. Odds do not meet the 2% threshold.")
+        print("No alert. Odds do not meet the 1.0% threshold.")
         return
 
 
@@ -110,29 +112,30 @@ def send_alert_checker(send_str,insert_str,matchup,b1,bx,b2,bf1,bfx,bf2,league,m
         nosend=False
     cur.execute("insert into red_alerts (send_timestamp,str,league,matchup,odds) values(%s,%s,%s,%s,%s)",(int(time.time()),insert_str,league,matchup,json.dumps(odds)))
     whichbook=""
-    if send_str.find("**TOTO")>-1:
+    send_str_upper = send_str.upper()
+    if send_str_upper.find("**TOTO")>-1:
         whichbook="toto" + market
-    elif send_str.find("UNIBET")>-1:
+    elif send_str_upper.find("UNIBET")>-1:
         whichbook="unibet" + market
-    elif send_str.find("CONTRA")>-1:
+    elif send_str_upper.find("CONTRA")>-1:
         whichbook="contra" + market
-    elif send_str.find("QRBET")>-1:
+    elif send_str_upper.find("QRBET")>-1:
         whichbook="qrbet" + market
-    elif send_str.find("WINKEL_TOTO")>-1:
+    elif send_str_upper.find("WINKEL_TOTO")>-1:
         whichbook="winkel_toto" + market
-    elif send_str.find("BINGOAL")>-1:
+    elif send_str_upper.find("BINGOAL")>-1:
         whichbook="bingoal" + market
-    elif send_str.find("BET365")>-1:
+    elif send_str_upper.find("BET365")>-1:
         whichbook="yess365" + market
-    elif send_str.find("BETALPHA")>-1:
+    elif send_str_upper.find("BETALPHA")>-1:
         whichbook="betalpha" + market
-    elif send_str.find("BET3000")>-1:
+    elif send_str_upper.find("BET3000")>-1:
         whichbook="bet3000" + market
-    elif send_str.find("M8BETS")>-1:
+    elif send_str_upper.find("M8BETS")>-1:
         whichbook="m8bets" + market
-    elif send_str.find("BET635")>-1:
+    elif send_str_upper.find("BET635")>-1:
         whichbook="bet635" + market
-    elif send_str.find("live90bet")>-1:
+    elif send_str_upper.find("live90bet")>-1:
         whichbook="live90bet" + market
     
 
@@ -146,12 +149,17 @@ def send_alert_checker(send_str,insert_str,matchup,b1,bx,b2,bf1,bfx,bf2,league,m
                     print("sent >> ",user_dict[ud]['tag']) 
             
                     client.send_message(user_dict[ud]['tag'],send_str[0:4096])#'@Heisenferd'
+                except PeerFloodError as msg:
+                    print("Telegram rate limit reached:", str(msg))
+                    time.sleep(300)
+
                 except Exception as msg:
-                    print("send err",ud,str(msg))
+                    print("send err", ud, str(msg))
             else:
                 print("user:",ud," not flagged for ",whichbook)
         except Exception as msg:
             print(str(msg),"outer ERR..prob with user_dict??:",ud,"..but tried")
+            traceback.print_exc()
     """
     if user_dict[13][whichbook]==1 and not nosend and bf1>1 and bf2>1:   
         print("sent heisen") 
@@ -203,17 +211,73 @@ def send_1x2(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
     insert_str = str(j)+a+b+c + "_1x2"#+c+"_" + str(d) + "_" + str(e) + "_" + str(f) + "_" + str(g) + "_"+ str(h) + "_" + str(i)
     if a=="**UNIBET**":
         print("insert >> ",insert_str)
-    send_str = a + "\n" + b + " - " + c + ", " + str(datetime.datetime.fromtimestamp(int(j))+datetime.timedelta(hours=1))[0:10] + "(" +  league + ")" + "\nMarket: 1x2\n"
-    if x and d>=1.5 and g>=1.5 and round(d/g*100-100,2)<7 and round(d/g*100-100,2)>0:
-        send_str+="1 = " + str(d) + " versus " + str(g) + " (" + str(round(d/g*100-100,2)) + "%)\n"
-        valid_odds=True
-    if y and e>=1.5 and h>=1.5 and round(e/h*100-100,2)<7  and round(e/h*100-100,2)>0:
-        send_str+="x = " + str(e) + " versus " + str(h) + " (" + str(round(e/h*100-100,2)) + "%)\n"
-        valid_odds=True
-    if z and f>=1.5 and i>=1.5 and round(f/i*100-100,2)<7 and round(f/i*100-100,2)>0:
-        send_str+="2 = " + str(f) + " versus " + str(i) + " (" + str(round(f/i*100-100,2)) + "%)\n"
-        valid_odds=True
-    send_str+="**/END"
+    book = a.replace("*", "").strip().upper()
+    book = {
+        "BET3000": "Bet3000",
+        "UNIBET": "Unibet",
+        "POLYMARKET": "Polymarket",
+        "M8BETS": "M8Bets",
+        "BET635": "Bet635",
+        "BETALPHA": "BetAlpha",
+        "YESS365": "Yess365",
+        "BINGOAL": "Bingoal",
+        "TOTO": "TOTO",
+        "QRBET": "QRBet"
+    }.get(book, book.title())
+
+    match_date = (
+        datetime.datetime.fromtimestamp(int(j))
+        + datetime.timedelta(hours=1)
+    ).strftime("%d-%m-%Y")
+
+    send_str = ""
+
+    if x and d>=1.5 and g>=1.5 and 0 < round(d/g*100-100,2) < 7:
+        advantage = round(d/g*100-100, 2)
+        send_str += (
+            f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
+            f"⚽ {b} vs {c}\n"
+            f"🏆 {league}\n"
+            f"🗓️ {match_date}\n\n"
+            f"📊 Market: 1X2 — Home\n\n"
+            f"📈 {book}: {d:.2f}\n"
+            f"📉 Betfair Lay: {g:.2f}"
+        )
+        valid_odds = True
+
+    if y and e>=1.5 and h>=1.5 and 0 < round(e/h*100-100,2) < 7:
+        advantage = round(e/h*100-100, 2)
+
+        if send_str:
+            send_str += "\n\n──────────\n\n"
+
+        send_str += (
+            f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
+            f"⚽ {b} vs {c}\n"
+            f"🏆 {league}\n"
+            f"🗓️ {match_date}\n\n"
+            f"📊 Market: 1X2 — Draw\n\n"
+            f"📈 {book}: {e:.2f}\n"
+            f"📉 Betfair Lay: {h:.2f}"
+        )
+        valid_odds = True
+
+    if z and f>=1.5 and i>=1.5 and 0 < round(f/i*100-100,2) < 7:
+        advantage = round(f/i*100-100, 2)
+
+        if send_str:
+            send_str += "\n\n──────────\n\n"
+
+        send_str += (
+            f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
+            f"⚽ {b} vs {c}\n"
+            f"🏆 {league}\n"
+            f"🗓️ {match_date}\n\n"
+            f"📊 Market: 1X2 — Away\n\n"
+            f"📈 {book}: {f:.2f}\n"
+            f"📉 Betfair Lay: {i:.2f}"
+        )
+        valid_odds = True
     if  a=="**UNIBET**":
         print("valid >> ",valid_odds,x,y,z,d,e,f,g,h,i,round(d/g*100-100,2), round(e/h*100-100,2),round(f/i*100-100,2))
     try:
@@ -231,23 +295,77 @@ def send_1x2(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
         print(" <<<<<<<<<< DONE WITH ERR..")
 
 def send_uo25(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
-    valid_odds=False
-    send_str=a + b + " -VS- " + c + " :: " + str(d) + "-" + str(e) + "-" + str(f) + " <> "  + str(g) + "-" + str(h) + "-" + str(i)
-    #here,, add exact string,, and then only resend if its not in the table already
-    insert_str = str(j)+a+b+c + "_uo25"#+c+"_" + str(d) + "_" + str(e) + "_" + str(f) + "_" + str(g) + "_"+ str(h) + "_" + str(i)
-    #print("insert >> ",insert_str)
-    send_str = a + "\n" + b + " - " + c + ", " + str(datetime.datetime.fromtimestamp(int(j))+datetime.timedelta(hours=1))[0:10] + "(" +  league + ")" + "\nMarket: UO2.5\n"
-    if x and d>=1.5 and g>=1.5 and round(d/g*100-100,2)<10:
-        send_str+="Under = " + str(d) + " versus " + str(g) + " (" + str(round(d/g*100-100,2)) + "%)\n"
-        valid_odds=True
-    if y and e>=1.5 and h>=1.5 and round(e/h*100-100,2)<10:
-        send_str+="x = " + str(e) + " versus " + str(h) + " (" + str(round(e/h*100-100,2)) + "%)\n"
-        valid_odds=True
-    if z and f>=1.5 and i>=1.5 and round(f/i*100-100,2)<10:
-        send_str+="Over = " + str(f) + " versus " + str(i) + " (" + str(round(f/i*100-100,2)) + "%)\n"
-        valid_odds=True
-    send_str+="**/END"
-    #print("send >> ",send_str)
+    insert_str = str(j) + a + b + c + "_uo25"
+    valid_odds = False
+    book = a.replace("*", "").strip().upper()
+    book = {
+        "BET3000": "Bet3000",
+        "UNIBET": "Unibet",
+        "POLYMARKET": "Polymarket",
+        "M8BETS": "M8Bets",
+        "BET635": "Bet635",
+        "BETALPHA": "BetAlpha",
+        "YESS365": "Yess365",
+        "BINGOAL": "Bingoal",
+        "TOTO": "TOTO",
+        "QRBET": "QRBet"
+    }.get(book, book.title())
+
+    match_date = (
+        datetime.datetime.fromtimestamp(int(j))
+        + datetime.timedelta(hours=1)
+    ).strftime("%d-%m-%Y")
+
+    send_str = ""
+
+    if x and d>=1.5 and g>=1.5 and 0 < round(d/g*100-100,2) < 7:
+        advantage = round(d/g*100-100, 2)
+        send_str += (
+            f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
+            f"⚽ {b} vs {c}\n"
+            f"🏆 {league}\n"
+            f"🗓️ {match_date}\n\n"
+            f"📊 Market: Under 2.5\n\n"
+            f"📈 {book}: {d:.2f}\n"
+            f"📉 Betfair Lay: {g:.2f}"
+        )
+        valid_odds = True
+
+    if y and e>=1.5 and h>=1.5 and 0 < round(e/h*100-100,2) < 7:
+        advantage = round(e/h*100-100, 2)
+
+        if send_str:
+            send_str += "\n\n──────────\n\n"
+
+        send_str += (
+            f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
+            f"⚽ {b} vs {c}\n"
+            f"🏆 {league}\n"
+            f"🗓️ {match_date}\n\n"
+            f"📊 Market: Exactly 2 Goals\n\n"
+            f"📈 {book}: {e:.2f}\n"
+            f"📉 Betfair Lay: {h:.2f}"
+        )
+        valid_odds = True
+
+    if z and f>=1.5 and i>=1.5 and 0 < round(f/i*100-100,2) < 7:
+        advantage = round(f/i*100-100, 2)
+
+        if send_str:
+            send_str += "\n\n──────────\n\n"
+
+        send_str += (
+            f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
+            f"⚽ {b} vs {c}\n"
+            f"🏆 {league}\n"
+            f"🗓️ {match_date}\n\n"
+            f"📊 Market: Over 2.5\n\n"
+            f"📈 {book}: {f:.2f}\n"
+            f"📉 Betfair Lay: {i:.2f}"
+        )
+        valid_odds = True
+    if  a=="**UNIBET**":
+        print("valid >> ",valid_odds,x,y,z,d,e,f,g,h,i,round(d/g*100-100,2), round(e/h*100-100,2),round(f/i*100-100,2))
     try:
         #here send off to check whether alert has been sent, or if its expired, and can be sent again..
         #perhaps,, you need to alter the prior alert key,, with some extra appendage,, perhaps timestamp that it
@@ -289,23 +407,77 @@ def send_uo35(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
         print("ext err..uo35",send_str,insert_str,b + " -VS- " + c,d,e,f,g,h,i,league,"_uo35",str(msg))
 
 def send_dnb(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
-    valid_odds=False
-    send_str=a + b + " -VS- " + c + " :: " + str(d) + "-" + str(e) + "-" + str(f) + " <> "  + str(g) + "-" + str(h) + "-" + str(i)
-    #here,, add exact string,, and then only resend if its not in the table already
-    insert_str = str(j)+a+b+c + "_dnb"#+c+"_" + str(d) + "_" + str(e) + "_" + str(f) + "_" + str(g) + "_"+ str(h) + "_" + str(i)
-    #print("insert >> ",insert_str)
-    send_str = a + "\n" + b + " - " + c + ", " + str(datetime.datetime.fromtimestamp(int(j))+datetime.timedelta(hours=1))[0:10] + "(" +  league + ")" + "\nMarket: DNB\n"
-    if x and d>=1.5 and g>=1.5 and round(d/g*100-100,2)<10:
-        send_str+="1 = " + str(d) + " versus " + str(g) + " (" + str(round(d/g*100-100,2))+ "%)\n"
-        valid_odds=True
-    if y and e>=1.5 and h>=1.5 and round(e/h*100-100,2)<10:
-        send_str+="x = " + str(e) + " versus " + str(h) + " (" + str(round(e/h*100-100,2)) + "%)\n"
-        valid_odds=True
-    if z and f>=1.5 and i>=1.5 and round(f/i*100-100,2)<10:
-        send_str+="2 = " + str(f) + " versus " + str(i) + " (" + str(round(f/i*100-100,2)) + "%)\n"
-        valid_odds=True
-    send_str+="**/END"
-    #print("send >> ",send_str)
+    insert_str = str(j) + a + b + c + "_dnb"
+    valid_odds = False
+    book = a.replace("*", "").strip().upper()
+    book = {
+        "BET3000": "Bet3000",
+        "UNIBET": "Unibet",
+        "POLYMARKET": "Polymarket",
+        "M8BETS": "M8Bets",
+        "BET635": "Bet635",
+        "BETALPHA": "BetAlpha",
+        "YESS365": "Yess365",
+        "BINGOAL": "Bingoal",
+        "TOTO": "TOTO",
+        "QRBET": "QRBet"
+    }.get(book, book.title())
+
+    match_date = (
+        datetime.datetime.fromtimestamp(int(j))
+        + datetime.timedelta(hours=1)
+    ).strftime("%d-%m-%Y")
+
+    send_str = ""
+
+    if x and d>=1.5 and g>=1.5 and 0 < round(d/g*100-100,2) < 7:
+        advantage = round(d/g*100-100, 2)
+        send_str += (
+            f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
+            f"⚽ {b} vs {c}\n"
+            f"🏆 {league}\n"
+            f"🗓️ {match_date}\n\n"
+            f"📊 Market: Draw No Bet — Home\n\n"
+            f"📈 {book}: {d:.2f}\n"
+            f"📉 Betfair Lay: {g:.2f}"
+        )
+        valid_odds = True
+
+    if y and e>=1.5 and h>=1.5 and 0 < round(e/h*100-100,2) < 7:
+        advantage = round(e/h*100-100, 2)
+
+        if send_str:
+            send_str += "\n\n──────────\n\n"
+
+        send_str += (
+            f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
+            f"⚽ {b} vs {c}\n"
+            f"🏆 {league}\n"
+            f"🗓️ {match_date}\n\n"
+            f"📊 Market: Draw\n\n"
+            f"📈 {book}: {e:.2f}\n"
+            f"📉 Betfair Lay: {h:.2f}"
+        )
+        valid_odds = True
+
+    if z and f>=1.5 and i>=1.5 and 0 < round(f/i*100-100,2) < 7:
+        advantage = round(f/i*100-100, 2)
+
+        if send_str:
+            send_str += "\n\n──────────\n\n"
+
+        send_str += (
+            f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
+            f"⚽ {b} vs {c}\n"
+            f"🏆 {league}\n"
+            f"🗓️ {match_date}\n\n"
+            f"📊 Market: Draw No Bet — Away\n\n"
+            f"📈 {book}: {f:.2f}\n"
+            f"📉 Betfair Lay: {i:.2f}"
+        )
+        valid_odds = True
+    if  a=="**UNIBET**":
+        print("valid >> ",valid_odds,x,y,z,d,e,f,g,h,i,round(d/g*100-100,2), round(e/h*100-100,2),round(f/i*100-100,2))
     try:
         #here send off to check whether alert has been sent, or if its expired, and can be sent again..
         #perhaps,, you need to alter the prior alert key,, with some extra appendage,, perhaps timestamp that it
@@ -2535,7 +2707,8 @@ while 1:
         for row in rows:
             odds_data = json.loads(row[8])
             if (datetime.datetime.fromtimestamp(int(row[1]))-datetime.datetime.now()).days <=14:
-                check_live90bet(odds_data)
+                if all(k in odds_data for k in ("live90bet_1_odds", "live90bet_x_odds", "live90bet_2_odds")):
+                    check_live90bet(odds_data)
             else:
                 pass#print("match outside of 14days")
 
@@ -2570,6 +2743,7 @@ while 1:
         conn.commit()
         
         conn.close()
-        time.sleep(60)
+        time.sleep(300)
     except Exception as msg:
-        print("main loop error:",str(msg))
+        print("main loop error:", str(msg))
+        traceback.print_exc()

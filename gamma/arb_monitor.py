@@ -28,10 +28,20 @@ from fuzzywuzzy import fuzz
 import pymysql
 import concurrent.futures
 import random
+import resource
 import unicodedata
 from threading import Thread
 import subprocess as sp
 import sys
+def mem(tag):
+    rss = 0
+    with open("/proc/self/status") as f:
+        for line in f:
+            if line.startswith("VmRSS:"):
+                rss = int(line.split()[1]) / 1024
+                break
+    print(f"[MEM] {tag}: {rss:.1f} MB")
+
 
 from arber_modules.unibet import *
 from arber_modules.toto import *
@@ -146,6 +156,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
 
     global book_list
     btime=time.time()
+    mem(f"START {comp_meta['league']}")
 
     try:
         print("pulling betfair")
@@ -175,6 +186,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
 
     if betfair_data:
         btime=time.time()
+        mem(f"START {comp_meta['league']}")
 
         #book_list =["yess365","toto","contra","winkel_toto"]
         unibet_data={}
@@ -251,6 +263,7 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
             #
             #bingoal_data={}
             #
+            mem(f"before futures {comp_meta['league']}")
             for future in concurrent.futures.as_completed(future_to_url):
                 book = future_to_url[future]
                 #rint(book)
@@ -466,6 +479,12 @@ def process_comp(comp_meta):#toto_id,bf_id,league):
                 print(f"Polymarket matched events: {len(polymarket_matches)}")
                 for match in polymarket_matches:
                     print(f"  {match['polymarket_event_id']} | {match['betfair_event_id']} | {match['polymarket_home']} vs {match['polymarket_away']} | {match['betfair_home']} vs {match['betfair_away']} | {match['home_fuzzy']}/{match['away_fuzzy']} | flipped={match['flipped']}")
+                    print(
+                        "DEBUG POLY INSERT CALL:",
+                        match.get("polymarket_event_id"),
+                        match.get("betfair_event_id"),
+                        comp_meta.get("league")
+                    )
                     insert_to_database_polymarket(
                         match,
                         comp_meta["league"]
@@ -900,6 +919,7 @@ last_cycle_time=time.time()
 
 while 1:#isnt_running:
     stime=time.time()
+    mem("START")
     try:
         bf_comps_active=0
 
@@ -1105,6 +1125,7 @@ while 1:#isnt_running:
             for c in comps:
                 all_comps.append(c['betfair'])
             all_events =  pull_all_events(all_comps) ## this s
+            mem("after pull_all_events")
 
 
             print("all_events:",len(all_events))
@@ -1125,12 +1146,15 @@ while 1:#isnt_running:
 
             print("lookup took:",time.time()  - p_time,"seconds")
             betfair_data_dict = betfair_dictbuilder(all_comps)
+            mem("after betfair_dictbuilder")
             with open("/home/arb_bot/gamma/betfair_dict.json","wb") as f:
                 pickle.dump(betfair_data_dict,f)
 
             print("betfair data dict took:",time.time()-ztime,len(betfair_data_dict))
             print("got comps..took ",time.time()-ttime)
+            mem("before go")
             go(comps)
+            mem("after go")
 
         else:#except Exception as msg:
             pass#print("err on scan",str(msg))
@@ -1160,6 +1184,7 @@ while 1:#isnt_running:
     cur.execute("insert into arber_scan_times (book_list,start_time,scan_time) values(%s,%s,%s)",(json.dumps(book_list),str(datetime.datetime.now())[0:19],round(int(time.time()-stime))))
     conn.commit()
     conn.close()
+    mem("END")
     print("inserted..")
 
     time.sleep(1)
