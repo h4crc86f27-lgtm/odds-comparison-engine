@@ -10,6 +10,7 @@ import telegram_send
 import time
 import traceback
 import datetime
+import pytz
 
 
 user_dict={}
@@ -66,16 +67,26 @@ def send_alert_checker(send_str,insert_str,matchup,b1,bx,b2,bf1,bfx,bf2,league,m
 
  # Calculate the percentage difference between bookmaker and Exchange odds
     def meets_threshold(book_odds, exchange_odds):
-        if exchange_odds == 0:
+        try:
+            book_odds = float(book_odds)
+            exchange_odds = float(exchange_odds)
+        except (TypeError, ValueError):
             return False
-        percentage_difference = ((book_odds - exchange_odds) / exchange_odds) * 100
+
+        if exchange_odds <= 0:
+            return False
+
+        percentage_difference = (
+            (book_odds - exchange_odds) / exchange_odds
+        ) * 100
+
         return percentage_difference >= 1.0
 
-    # Check if the odds meet the 1.0% threshold
+    # Controleer uitsluitend uitkomsten waarvan de market-flag actief is.
     if not (
-        meets_threshold(b1, bf1) or 
-        meets_threshold(bx, bfx) or 
-        meets_threshold(b2, bf2)
+        (flag1 and meets_threshold(b1, bf1)) or
+        (flag2 and meets_threshold(bx, bfx)) or
+        (flag3 and meets_threshold(b2, bf2))
     ):
         print("No alert. Odds do not meet the 1.0% threshold.")
         return
@@ -225,10 +236,12 @@ def send_1x2(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
         "QRBET": "QRBet"
     }.get(book, book.title())
 
-    match_date = (
-        datetime.datetime.fromtimestamp(int(j))
-        + datetime.timedelta(hours=1)
-    ).strftime("%d-%m-%Y")
+    match_datetime = datetime.datetime.fromtimestamp(
+        int(j),
+        tz=pytz.timezone("Europe/Amsterdam")
+    )
+    match_date = match_datetime.strftime("%d-%m-%Y")
+    match_time = match_datetime.strftime("%H:%M")
 
     send_str = ""
 
@@ -238,7 +251,8 @@ def send_1x2(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
             f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
             f"⚽ {b} vs {c}\n"
             f"🏆 {league}\n"
-            f"🗓️ {match_date}\n\n"
+            f"🗓️ {match_date}\n"
+            f"🕒 Kick-off: {match_time} (Amsterdam)\n\n"
             f"📊 Market: 1X2 — Home\n\n"
             f"📈 {book}: {d:.2f}\n"
             f"📉 Betfair Lay: {g:.2f}"
@@ -255,7 +269,8 @@ def send_1x2(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
             f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
             f"⚽ {b} vs {c}\n"
             f"🏆 {league}\n"
-            f"🗓️ {match_date}\n\n"
+            f"🗓️ {match_date}\n"
+            f"🕒 Kick-off: {match_time} (Amsterdam)\n\n"
             f"📊 Market: 1X2 — Draw\n\n"
             f"📈 {book}: {e:.2f}\n"
             f"📉 Betfair Lay: {h:.2f}"
@@ -272,7 +287,8 @@ def send_1x2(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
             f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
             f"⚽ {b} vs {c}\n"
             f"🏆 {league}\n"
-            f"🗓️ {match_date}\n\n"
+            f"🗓️ {match_date}\n"
+            f"🕒 Kick-off: {match_time} (Amsterdam)\n\n"
             f"📊 Market: 1X2 — Away\n\n"
             f"📈 {book}: {f:.2f}\n"
             f"📉 Betfair Lay: {i:.2f}"
@@ -311,10 +327,12 @@ def send_uo25(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
         "QRBET": "QRBet"
     }.get(book, book.title())
 
-    match_date = (
-        datetime.datetime.fromtimestamp(int(j))
-        + datetime.timedelta(hours=1)
-    ).strftime("%d-%m-%Y")
+    match_datetime = datetime.datetime.fromtimestamp(
+        int(j),
+        tz=pytz.timezone("Europe/Amsterdam")
+    )
+    match_date = match_datetime.strftime("%d-%m-%Y")
+    match_time = match_datetime.strftime("%H:%M")
 
     send_str = ""
 
@@ -324,7 +342,8 @@ def send_uo25(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
             f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
             f"⚽ {b} vs {c}\n"
             f"🏆 {league}\n"
-            f"🗓️ {match_date}\n\n"
+            f"🗓️ {match_date}\n"
+            f"🕒 Kick-off: {match_time} (Amsterdam)\n\n"
             f"📊 Market: Under 2.5\n\n"
             f"📈 {book}: {d:.2f}\n"
             f"📉 Betfair Lay: {g:.2f}"
@@ -341,7 +360,8 @@ def send_uo25(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
             f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
             f"⚽ {b} vs {c}\n"
             f"🏆 {league}\n"
-            f"🗓️ {match_date}\n\n"
+            f"🗓️ {match_date}\n"
+            f"🕒 Kick-off: {match_time} (Amsterdam)\n\n"
             f"📊 Market: Exactly 2 Goals\n\n"
             f"📈 {book}: {e:.2f}\n"
             f"📉 Betfair Lay: {h:.2f}"
@@ -358,7 +378,8 @@ def send_uo25(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
             f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
             f"⚽ {b} vs {c}\n"
             f"🏆 {league}\n"
-            f"🗓️ {match_date}\n\n"
+            f"🗓️ {match_date}\n"
+            f"🕒 Kick-off: {match_time} (Amsterdam)\n\n"
             f"📊 Market: Over 2.5\n\n"
             f"📈 {book}: {f:.2f}\n"
             f"📉 Betfair Lay: {i:.2f}"
@@ -423,10 +444,12 @@ def send_dnb(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
         "QRBET": "QRBet"
     }.get(book, book.title())
 
-    match_date = (
-        datetime.datetime.fromtimestamp(int(j))
-        + datetime.timedelta(hours=1)
-    ).strftime("%d-%m-%Y")
+    match_datetime = datetime.datetime.fromtimestamp(
+        int(j),
+        tz=pytz.timezone("Europe/Amsterdam")
+    )
+    match_date = match_datetime.strftime("%d-%m-%Y")
+    match_time = match_datetime.strftime("%H:%M")
 
     send_str = ""
 
@@ -436,7 +459,8 @@ def send_dnb(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
             f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
             f"⚽ {b} vs {c}\n"
             f"🏆 {league}\n"
-            f"🗓️ {match_date}\n\n"
+            f"🗓️ {match_date}\n"
+            f"🕒 Kick-off: {match_time} (Amsterdam)\n\n"
             f"📊 Market: Draw No Bet — Home\n\n"
             f"📈 {book}: {d:.2f}\n"
             f"📉 Betfair Lay: {g:.2f}"
@@ -453,7 +477,8 @@ def send_dnb(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
             f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
             f"⚽ {b} vs {c}\n"
             f"🏆 {league}\n"
-            f"🗓️ {match_date}\n\n"
+            f"🗓️ {match_date}\n"
+            f"🕒 Kick-off: {match_time} (Amsterdam)\n\n"
             f"📊 Market: Draw\n\n"
             f"📈 {book}: {e:.2f}\n"
             f"📉 Betfair Lay: {h:.2f}"
@@ -470,7 +495,8 @@ def send_dnb(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
             f"🔔 {book} ALERT (+{advantage:.2f}%)\n\n"
             f"⚽ {b} vs {c}\n"
             f"🏆 {league}\n"
-            f"🗓️ {match_date}\n\n"
+            f"🗓️ {match_date}\n"
+            f"🕒 Kick-off: {match_time} (Amsterdam)\n\n"
             f"📊 Market: Draw No Bet — Away\n\n"
             f"📈 {book}: {f:.2f}\n"
             f"📉 Betfair Lay: {i:.2f}"
@@ -487,7 +513,10 @@ def send_dnb(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
         else:
             pass#print("skipping due to inadequate odds")     
     except Exception as msg:
-        print("ext err DNB..",send_str,insert_str,b + " -VS- " + c,d,e,f,g,h,i,league,"_dnb",str(msg))
+        print("\n========== DNB EXCEPTION ==========")
+        print(str(msg))
+        traceback.print_exc()
+        print("===================================\n")
 
 
 def send_ht(a,b,c,d,e,f,g,h,i,j,x,y,z,league):
